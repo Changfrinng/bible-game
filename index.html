@@ -146,9 +146,9 @@ footer a{color:var(--muted)}
     </div>
     <button class="home-link" id="homeBtn" hidden>回首頁</button>
   </header>
-  <div class="audio"><span>晨禱音樂</span><button id="musicBtn" aria-pressed="false">▶ 播放</button><span class="tune" id="tuneName"></span><button id="tuneBtn">下一首</button><a class="yt" href="https://www.youtube.com/watch?v=puE-WlqaCeE&amp;list=RDpuE-WlqaCeE&amp;start_radio=1" target="_blank" rel="noopener">在 YouTube 聽 Morning Psalms ↗</a></div>
+  <div class="audio"><span>大衛的琴</span><button id="musicBtn" aria-pressed="false">▶ 播放</button><span class="tune" id="tuneName"></span><button id="tuneBtn">下一首</button><a class="yt" href="https://www.youtube.com/results?search_query=%E5%A4%A7%E8%A1%9B%E7%9A%84%E7%90%B4" target="_blank" rel="noopener">在 YouTube 聽「大衛的琴」↗</a></div>
   <main id="app"></main>
-  <footer>經文取自 <a href="https://springbible.fhl.net/OfflineBible/index.html" target="_blank" rel="noopener">信望愛離線聖經</a>（和合本）· 背景音樂為網頁即時生成的原創配樂 · 數字鍵 1–4 可直接作答</footer>
+  <footer>經文取自 <a href="https://springbible.fhl.net/OfflineBible/index.html" target="_blank" rel="noopener">信望愛離線聖經</a>（和合本）· 背景音樂為網頁即時生成的原創豎琴配樂 · 數字鍵 1–4 可直接作答</footer>
 </div>
 
 <script>/* three.js r128, MIT License, https://threejs.org */
@@ -491,7 +491,8 @@ function buildFigure(s){
 const TUNES=[
   {name:"晨光",bpm:64,chords:[["D3","F#3","A3"],["B2","D3","F#3"],["G2","B2","D3"],["A2","C#3","E3"]],scale:["D","E","F#","A","B"]},
   {name:"靜默禱告",bpm:58,chords:[["F2","A2","C3"],["D2","F2","A2"],["A#2","D3","F3"],["C3","E3","G3"]],scale:["F","G","A","C","D"]},
-  {name:"溪水旁",bpm:62,chords:[["C3","E3","G3"],["B2","D3","G3"],["A2","C3","E3"],["F2","A2","C3"]],scale:["C","D","E","G","A"]}
+  {name:"溪水旁",bpm:62,chords:[["C3","E3","G3"],["B2","D3","G3"],["A2","C3","E3"],["F2","A2","C3"]],scale:["C","D","E","G","A"]},
+  {name:"青草地上",bpm:60,chords:[["G2","B2","D3"],["E2","G2","B2"],["C3","E3","G3"],["D3","F#3","A3"]],scale:["G","A","B","D","E"]}
 ];
 const Music={ctx:null,on:false,tune:0,bar:0,beat:0,next:0,timer:null,mel:9,
   midi(n){const m=n.match(/^([A-G])(#)?(\d)$/);return {C:0,D:2,E:4,F:5,G:7,A:9,B:11}[m[1]]+(m[2]?1:0)+(+m[3]+1)*12},
@@ -509,10 +510,20 @@ const Music={ctx:null,on:false,tune:0,bar:0,beat:0,next:0,timer:null,mel:9,
       g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+1.2);g.gain.setValueAtTime(vol,t+dur-.2);g.gain.linearRampToValueAtTime(0,t+dur+1.4);
       o.connect(g);g.connect(this.padBus);o.start(t);o.stop(t+dur+1.5)});
   },
+  /* plucked lyre/harp string (Karplus-Strong), cached per pitch */
+  string(f){
+    this.bufs=this.bufs||{};const key=Math.round(f*10);if(this.bufs[key])return this.bufs[key];
+    const c=this.ctx,sr=c.sampleRate,len=Math.floor(sr*3.2),N=Math.max(2,Math.round(sr/f));
+    const buf=c.createBuffer(1,len,sr),d=buf.getChannelData(0),ring=new Float32Array(N);
+    for(let i=0;i<N;i++)ring[i]=(Math.random()*2-1)*(1-i/N*.5);
+    const decay=Math.min(.9985,.994+f/40000);let idx=0,prev=0;
+    for(let i=0;i<len;i++){const cur=ring[idx];const nx=ring[(idx+1)%N];ring[idx]=decay*.5*(cur+nx);d[i]=cur*.6+prev*.4;prev=cur;idx=(idx+1)%N}
+    return this.bufs[key]=buf;
+  },
   piano(f,t,vol){
-    const c=this.ctx;[[1,1],[2,.25],[3,.08]].forEach(([k,a])=>{const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=f*k;
-      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol*a,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+2.8/k);
-      o.connect(g);g.connect(this.out);o.start(t);o.stop(t+3)});
+    const c=this.ctx,src=c.createBufferSource(),g=c.createGain(),lp=c.createBiquadFilter();
+    src.buffer=this.string(f);lp.type="lowpass";lp.frequency.value=Math.min(6000,f*8);
+    g.gain.value=vol*2.2;src.connect(lp);lp.connect(g);g.connect(this.out);src.start(t);
   },
   start(){if(!this.init())return false;this.ctx.resume();this.on=true;this.bar=0;this.beat=0;this.next=this.ctx.currentTime+.15;clearInterval(this.timer);this.timer=setInterval(()=>this.tick(),80);return true},
   stop(){this.on=false;clearInterval(this.timer)},
@@ -520,7 +531,8 @@ const Music={ctx:null,on:false,tune:0,bar:0,beat:0,next:0,timer:null,mel:9,
     const t=TUNES[this.tune],sp=60/t.bpm;
     while(this.next<this.ctx.currentTime+.5){
       const ch=t.chords[this.bar%t.chords.length].map(n=>this.midi(n));
-      if(this.beat===0){ch.forEach(m=>this.pad(this.hz(m),this.next,sp*4,.035));this.pad(this.hz(ch[0]-12),this.next,sp*4,.05)}
+      if(this.beat===0){this.pad(this.hz(ch[0]-12),this.next,sp*4,.025);
+        [ch[0]-12,...ch,ch[0]+12].forEach((m,i)=>this.piano(this.hz(m),this.next+i*.07,.07))}
       const pool=[];for(let o=5;o<=6;o++)t.scale.forEach(n=>pool.push(this.midi(n+o)));pool.sort((x,y)=>x-y);
       const play=this.beat===0||Math.random()<.5;
       if(play){
@@ -540,7 +552,7 @@ const Music={ctx:null,on:false,tune:0,bar:0,beat:0,next:0,timer:null,mel:9,
   }
 };
 const musicBtn=document.getElementById("musicBtn"),tuneName=document.getElementById("tuneName");
-const showTune=()=>{tuneName.textContent="〈"+TUNES[Music.tune].name+"〉"};showTune();
+const showTune=()=>{tuneName.textContent="〈大衛的琴 · "+TUNES[Music.tune].name+"〉"};showTune();
 musicBtn.onclick=()=>{
   if(Music.on){Music.stop();musicBtn.setAttribute("aria-pressed","false");musicBtn.textContent="▶ 播放"}
   else if(Music.start()){musicBtn.setAttribute("aria-pressed","true");musicBtn.textContent="❚❚ 暫停"}
@@ -587,7 +599,54 @@ async function initVisits(){
     },()=>done("error"));
   }catch(e){done(Visits.state==="loading"?"error":Visits.state)}
 }
+/* Public (no-login) build: shared counters on a free counter service, polled for near-live updates */
+const COUNTER_NS="changfrinng-bible-game";
+const COUNTER_BASE="https://abacus.jasoncameron.dev";
+const REGION_KEY={"台灣":"tw","港澳":"hkmo","中國大陸":"cn","日本":"jp","韓國":"kr","新加坡":"sg","馬來西亞":"my","菲律賓":"ph","泰國":"th","越南":"vn","印尼":"id","亞洲其他":"asia","美國":"us","加拿大":"ca","巴西":"br","美洲其他":"americas","英國":"uk","德國":"de","法國":"fr","歐洲其他":"europe","澳洲":"au","紐西蘭":"nz","大洋洲其他":"oceania","南非":"za","非洲其他":"africa"};
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
+async function counter(op,key){
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),8000);
+  try{const r=await fetch(`${COUNTER_BASE}/${op}/${COUNTER_NS}/${key}`,{signal:ac.signal});
+    if(r.status===404)return 0;if(!r.ok)throw new Error(r.status);const j=await r.json();return Number(j.value)||0}
+  finally{clearTimeout(t)}
+}
+async function initCounterVisits(){
+  const saved=ls.get("jwxg-region");if(saved&&REGIONS[saved])Visits.region=saved;
+  Visits.counterMode=true;
+  try{
+    if(!ss.get("jwxg-counted")){
+      ss.set("jwxg-counted","1");
+      const hits=[counter("hit","total"),counter("hit","r-"+REGION_KEY[Visits.region])];
+      if(!ls.get("jwxg-visitor")){ls.set("jwxg-visitor","1");hits.push(counter("hit","visitors"))}
+      await Promise.all(hits);
+    }
+  }catch(e){}
+  const pollTotals=async()=>{
+    try{const [total,visitors]=await Promise.all([counter("get","total"),counter("get","visitors")]);
+      Visits.counter=Object.assign(Visits.counter||{regions:{}},{total,visitors});Visits.state="live"}
+    catch(e){if(!Visits.counter)Visits.state="error"}
+    drawVisits();
+  };
+  const pollRegions=async()=>{
+    const names=Object.keys(REGION_KEY);
+    const vals=await Promise.all(names.map(n=>counter("get","r-"+REGION_KEY[n]).catch(()=>null)));
+    Visits.counter=Visits.counter||{total:0,visitors:0,regions:{}};
+    names.forEach((n,i)=>{if(vals[i]!==null)Visits.counter.regions[n]=vals[i]});
+    drawVisits();
+  };
+  await pollTotals();await pollRegions();
+  setInterval(()=>{if(!document.hidden)pollTotals()},15000);
+  setInterval(()=>{if(!document.hidden)pollRegions()},60000);
+}
 function tallies(){
+  if(Visits.counter){
+    const c=Visits.counter,by={};
+    Object.entries(c.regions).forEach(([r,n])=>{if(n>0)by[r]={n}});
+    const regions=Object.keys(by).length;
+    if(!regions)by[Visits.region]={n:1};
+    return {by,total:c.total,visitors:c.visitors,regions};
+  }
   const by={};let total=0;
   Visits.rows.forEach(r=>{const n=Number(r.count)||1;by[r.region]=(by[r.region]||{v:0,n:0});by[r.region].v++;by[r.region].n+=n;total+=n});
   if(!Visits.rows.length&&Visits.state!=="live")by[Visits.region]={v:1,n:1,local:true};
@@ -609,7 +668,7 @@ function renderSplash(){
   </div>`;
   document.getElementById("enter").onclick=renderHome;
   document.getElementById("regionSel").onchange=async e=>{
-    Visits.region=e.target.value;drawVisits();
+    Visits.region=e.target.value;ls.set("jwxg-region",Visits.region);drawVisits();
     if(Visits.ref){try{await Visits.ref.update({region:Visits.region})}catch(err){}}
   };
   drawVisits();
@@ -623,8 +682,8 @@ function drawVisits(){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
   const live=Visits.state==="live";
   set("vTotal",live?t.total.toLocaleString():"—");set("vPeople",live?t.visitors.toLocaleString():"—");set("vRegions",live?t.regions:"—");
-  set("vlive",{loading:"讀取各地瀏覽人次…",live:"即時更新",slow:"暫時連不上人次資料",error:"人次資料讀取失敗",off:"單機版"}[Visits.state]);
-  set("vNote",{loading:"",live:"每位登入的訪客開啟一次就計 1 人次，可以在上方改成你所在的地區。",slow:"人次資料暫時連不上，地圖先顯示你的位置；連線恢復後會自動更新。",error:"人次資料讀取失敗，地圖先顯示你的位置。",off:"這是免登入的單機版，不統計瀏覽人次；地圖只顯示你的位置。"}[Visits.state]);
+  set("vlive",{loading:"讀取各地瀏覽人次…",live:"即時更新",slow:"暫時連不上人次資料",error:"人次資料讀取失敗",off:"未登入，無法統計"}[Visits.state]);
+  set("vNote",{loading:"",live:Visits.counterMode?"每開啟一次遊戲計 1 人次，同一支手機或電腦只算 1 位訪客；數字每 15 秒自動更新。地區依裝置時區判斷，可以在上方修改。":"每位登入的訪客開啟一次就計 1 人次，可以在上方改成你所在的地區。",slow:"人次資料暫時連不上，地圖先顯示你的位置；連線恢復後會自動更新。",error:"統計服務暫時連不上，地圖先顯示你的位置，稍後會自動再試。",off:"要計入瀏覽人次，需要登入 claude.ai 開啟這個遊戲；目前地圖只顯示你的位置。"}[Visits.state]);
   const top=Object.entries(t.by).sort((a,b)=>b[1].n-a[1].n).slice(0,8);
   const ul=document.getElementById("vTop");
   if(ul)ul.innerHTML=live?top.map(([r,x])=>`<li class="${r===Visits.region?"me":""}">${r} ${x.n.toLocaleString()} 人次</li>`).join(""):"";
@@ -829,7 +888,7 @@ document.addEventListener("keydown",e=>{
 
 Stage.init();
 renderSplash();
-initVisits();
+((window.claude&&window.claude.use)?initVisits:initCounterVisits)();
 </script>
 
 </body>
