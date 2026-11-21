@@ -270,6 +270,19 @@ const VERSES=RAW.trim().split("\n").map(line=>{
   return {b,ref:`${BOOKS[b]} ${m[2]}:${m[3]}`,text,clauses:splitClauses(text)};
 });
 
+/* Whole New Testament (和合本), loaded on demand from nt.json beside the page, or inlined as window.NT_DATA */
+let NT=null,ntLoading=null;
+const mkVerse=(b,c,v,t)=>({b,ref:`${BOOKS[b]} ${c}:${v}`,text:t,clauses:splitClauses(t)});
+function loadNT(){
+  if(NT)return Promise.resolve(NT);
+  if(!ntLoading)ntLoading=(window.NT_DATA?Promise.resolve(window.NT_DATA):fetch("nt.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}))
+    .then(raw=>NT=raw.map(([b,c,v,t])=>mkVerse(b,c,v,t))).catch(e=>{ntLoading=null;throw e});
+  return ntLoading;
+}
+const scopeStore={get(){try{return localStorage.getItem("jwxg-scope")||"gold"}catch(e){return "gold"}},set(v){try{localStorage.setItem("jwxg-scope",v)}catch(e){}}};
+let SCOPE=scopeStore.get();
+const scopeVerses=()=>SCOPE==="nt"&&NT?NT.filter(v=>v.text.length>=10&&v.text.length<=90):VERSES;
+
 const rand=n=>Math.floor(Math.random()*n);
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rand(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -287,10 +300,11 @@ const store={get(){try{return JSON.parse(localStorage.getItem("jwxg-best")||"{}"
   set(v){try{localStorage.setItem("jwxg-best",JSON.stringify(v))}catch(e){}}};
 
 /* ---------- question builders ---------- */
-const POOL=[...new Set(VERSES.flatMap(v=>v.clauses.map(core)))].filter(c=>c.length>=3&&c.length<=16);
+const poolCache={};
+const clausePool=()=>{const k=SCOPE==="nt"&&NT?"nt":"gold";return poolCache[k]=poolCache[k]||[...new Set(scopeVerses().flatMap(v=>v.clauses.map(core)))].filter(c=>c.length>=3&&c.length<=16)};
 function makeFill(v){
   const idx=[];v.clauses.forEach((c,i)=>{const k=core(c).length;if(i>0&&k>=3&&k<=16)idx.push(i)});
-  const i=idx[rand(idx.length)], ans=core(v.clauses[i]);
+  const i=idx[rand(idx.length)], ans=core(v.clauses[i]), POOL=clausePool();
   const near=shuffle(POOL.filter(c=>c!==ans&&!v.text.includes(c)&&Math.abs(c.length-ans.length)<=3));
   const rest=shuffle(POOL.filter(c=>c!==ans&&!v.text.includes(c)&&!near.includes(c)));
   const opts=shuffle([ans,...near.concat(rest).slice(0,3)]);
@@ -314,9 +328,9 @@ function makeCanon(){
 }
 function buildRound(mode){
   if(mode==="canon")return Array.from({length:ROUND},makeCanon);
-  let pool=VERSES;
-  if(mode==="fill")pool=VERSES.filter(v=>v.clauses.some((c,i)=>i>0&&core(c).length>=3&&core(c).length<=16));
-  if(mode==="order")pool=VERSES.filter(v=>v.clauses.length>=3);
+  const all=scopeVerses();let pool=all;
+  if(mode==="fill")pool=all.filter(v=>v.clauses.some((c,i)=>i>0&&core(c).length>=3&&core(c).length<=16));
+  if(mode==="order")pool=all.filter(v=>v.clauses.length>=3&&v.clauses.length<=8);
   return shuffle(pool).slice(0,ROUND).map(v=>mode==="fill"?makeFill(v):mode==="book"?makeBook(v):makeOrder(v));
 }
 
@@ -769,9 +783,12 @@ function renderHome(){
   app.innerHTML=`<div class="wrap fade">
     <div class="stage" id="stage"><div class="cap"></div></div>
     <article class="verse-card"><p class="eyebrow">今日金句</p><p class="verse">${esc(v.text)}</p><p class="ref">${v.ref}</p></article>
+    <p class="section-label">經文範圍</p>
+    <div class="people scope" id="scope"><button data-s="gold" aria-pressed="${SCOPE==="gold"}">精選金句（${VERSES.length} 節）</button><button data-s="nt" aria-pressed="${SCOPE==="nt"}">新約全部（27 卷）</button></div>
+    <p class="note" id="scopeNote"></p>
     <p class="section-label">選擇玩法 · 每局 ${ROUND} 題</p>
     <div class="modes">${Object.entries(MODES).map(([k,m])=>`<button class="mode" data-mode="${k}"><h3>${m.name}<small>${best[k]!=null?"最佳 "+best[k]+" 分":m.tag}</small></h3><p>${m.desc}</p></button>`).join("")}</div>
-    <p class="section-label" style="letter-spacing:.04em">答對得 10 分；連續答對每題再加分（最多 +10）。共收錄 ${VERSES.length} 節和合本常用金句。</p>
+    <p class="section-label" style="letter-spacing:.04em">答對得 10 分；連續答對每題再加分（最多 +10）。題目從上方選的經文範圍隨機出題。</p>
     <p class="section-label">人物圖鑑 · 點選人物看 3D 造型</p>
     <div class="people">${Object.entries(PEOPLE).map(([k,p])=>`<button data-p="${k}" aria-pressed="false">${p.name}</button>`).join("")}</div>
     <p class="bio" id="bio"></p>
@@ -779,18 +796,26 @@ function renderHome(){
   </div>`;
   document.getElementById("toMap").onclick=renderSplash;
   app.querySelectorAll(".mode").forEach(b=>b.onclick=()=>start(b.dataset.mode));
+  const scopeNote=document.getElementById("scopeNote");
+  const noteFor=()=>{scopeNote.textContent=SCOPE==="nt"?(NT?`新約 27 卷共 ${NT.length.toLocaleString()} 節經文，從馬太福音到啟示錄隨機出題。`:"正在載入新約經文…"):"和合本最常背誦的金句，適合入門。"};
+  noteFor();
+  if(SCOPE==="nt"&&!NT)loadNT().then(noteFor).catch(()=>{scopeNote.textContent="新約經文載入失敗，請檢查網路後重新整理。"});
+  app.querySelectorAll("#scope button").forEach(b=>b.onclick=()=>{SCOPE=b.dataset.s;scopeStore.set(SCOPE);
+    app.querySelectorAll("#scope button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.s===SCOPE));noteFor();
+    if(SCOPE==="nt"&&!NT)loadNT().then(noteFor).catch(()=>{scopeNote.textContent="新約經文載入失敗，請檢查網路後重新整理。"})});
   Stage.mount(document.getElementById("stage"));
   const today=charFor(v.b);Stage.show(today);
   const bio=document.getElementById("bio");
-  const pick=k=>{const p=PEOPLE[k];app.querySelectorAll(".people button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.p===k));
+  const pick=k=>{const p=PEOPLE[k];app.querySelectorAll(".people:not(.scope) button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.p===k));
     bio.innerHTML=`<b>${p.name}</b>（${p.title}）：${p.bio}`;Stage.show(p);Stage.play("cheer")};
-  app.querySelectorAll(".people button").forEach(b=>b.onclick=()=>{pick(b.dataset.p);document.getElementById("stage").scrollIntoView({behavior:"smooth",block:"nearest"})});
+  app.querySelectorAll(".people:not(.scope) button").forEach(b=>b.onclick=()=>{pick(b.dataset.p);document.getElementById("stage").scrollIntoView({behavior:"smooth",block:"nearest"})});
   const tk=Object.keys(PEOPLE).find(k=>PEOPLE[k]===today);
   if(tk){app.querySelector(`.people button[data-p="${tk}"]`).setAttribute("aria-pressed","true");bio.innerHTML=`<b>${today.name}</b>（${today.title}）：${today.bio}`}
   else bio.textContent="今日金句出自"+BOOKS[v.b]+"。點上面的人物，認識聖經裡的人物。";
 }
 
-function start(mode){
+async function start(mode){
+  if(SCOPE==="nt"&&!NT){try{await loadNT()}catch(e){SCOPE="gold";scopeStore.set("gold")}}
   S={mode,qs:buildRound(mode),n:0,score:0,streak:0,maxStreak:0,correct:0,log:[]};
   homeBtn.hidden=false;renderQ();
 }
