@@ -380,40 +380,60 @@ const Stage={ok:false,el:null,cache:{},fig:null,sil:false,anim:null,t0:performan
       const T=THREE;
       const r=this.r=new T.WebGLRenderer({antialias:true});
       r.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-      this.scene=new T.Scene();
-      this.cam=new T.PerspectiveCamera(34,1,.1,100);this.cam.position.set(0,1.55,5.4);this.cam.lookAt(0,1.05,0);
-      this.hemi=new T.HemisphereLight(0xffffff,0x806a4a,.85);this.scene.add(this.hemi);
-      this.sun=new T.DirectionalLight(0xfff4dd,.75);this.sun.position.set(3,5,4);this.scene.add(this.sun);
-      const L=c=>new T.MeshLambertMaterial({color:c,flatShading:true});
-      this.mat={ground:L(0xd9c79a),hillA:L(0x9db07a),hillB:L(0xc2a66b),leaf:L(0x6f8a4a),trunk:L(0x6b4a2a)};
-      const ground=new T.Mesh(new T.CircleGeometry(14,40),this.mat.ground);ground.rotation.x=-Math.PI/2;this.scene.add(ground);
-      [[-7,-10,5,"hillA"],[0,-12,6,"hillB"],[7,-10,5,"hillA"],[-12,-7,4,"hillB"],[12,-8,4.5,"hillB"]].forEach(([x,z,s,m])=>{
-        const h=new T.Mesh(new T.SphereGeometry(s,12,8),this.mat[m]);h.scale.y=.32;h.position.set(x,0,z);this.scene.add(h)});
-      [[-2.7,-2.2,1],[3,-3.4,1.2],[-4,-5.5,1.1],[4.6,-6.5,.9]].forEach(([x,z,s])=>{
-        const t=new T.Group();
-        const tr=new T.Mesh(new T.CylinderGeometry(.07*s,.12*s,1*s,6),this.mat.trunk);tr.position.y=.5*s;t.add(tr);
-        const lf=new T.Mesh(new T.IcosahedronGeometry(.55*s,0),this.mat.leaf);lf.position.y=1.2*s;lf.scale.set(1.2,.85,1.1);t.add(lf);
-        t.position.set(x,0,z);this.scene.add(t)});
-      this.orb=new T.Mesh(new T.SphereGeometry(.7,16,12),new T.MeshBasicMaterial({color:0xfff1c4}));this.orb.position.set(5,5.2,-14);this.scene.add(this.orb);
-      const sg=new T.BufferGeometry(),pts=[];for(let i=0;i<220;i++){const a=Math.random()*Math.PI-Math.PI/2,e=Math.random()*.9+.05,R=40;pts.push(Math.sin(a)*Math.cos(e)*R,Math.sin(e)*R,-Math.cos(a)*Math.cos(e)*R)}
+      r.outputEncoding=T.sRGBEncoding;r.toneMapping=T.ACESFilmicToneMapping;r.toneMappingExposure=1.0;
+      r.shadowMap.enabled=true;r.shadowMap.type=T.PCFSoftShadowMap;
+      const sc=this.scene=new T.Scene();
+      sc.background=TEX.gradient(["#070b18","#141a2e","#2a1c12"]);
+      sc.fog=new T.Fog(0x1c130c,10,24);
+      this.cam=new T.PerspectiveCamera(32,1,.1,100);this.cam.position.set(.25,1.6,5.0);this.cam.lookAt(0,1.2,0);
+      this.hemi=new T.HemisphereLight(0x7f93c4,0x3a2414,.45);sc.add(this.hemi);
+      const key=new T.DirectionalLight(0xffb26a,1.55);key.position.set(3.2,3.6,2.8);key.castShadow=true;
+      key.shadow.mapSize.set(1024,1024);Object.assign(key.shadow.camera,{left:-3,right:3,top:3,bottom:-1,near:.5,far:14});key.shadow.bias=-.0015;sc.add(key);
+      const door=new T.PointLight(0xff9440,2.2,9,1.6);door.position.set(2.3,1.5,-1.3);sc.add(door);
+      const rim=new T.DirectionalLight(0x8aa4ff,.45);rim.position.set(-4,3,-3);sc.add(rim);
+      const S=(c,o={})=>new T.MeshStandardMaterial({color:c,roughness:.9,metalness:0,...o});
+      // stone courtyard floor
+      const floor=new T.Mesh(new T.PlaneGeometry(18,18),S(0xffffff,{map:TEX.flagstone(4.5)}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;sc.add(floor);
+      // house wall with glowing doorway
+      const wall=new T.Group();wall.position.set(3.3,0,-2.5);wall.rotation.y=-.5;sc.add(wall);
+      const wm=S(0xffffff,{map:TEX.plaster(1.5)});
+      const wl=new T.Mesh(new T.BoxGeometry(1.4,3.3,.45),wm);wl.position.set(-1.25,1.65,0);wall.add(wl);
+      const wr=new T.Mesh(new T.BoxGeometry(2.2,3.3,.45),wm);wr.position.set(1.65,1.65,0);wall.add(wr);
+      const wt=new T.Mesh(new T.BoxGeometry(1.1,1.2,.45),wm);wt.position.set(0,2.7,0);wall.add(wt);
+      [wl,wr,wt].forEach(m=>{m.receiveShadow=true;m.castShadow=true});
+      const glow=new T.Mesh(new T.PlaneGeometry(1.1,2.1),new T.MeshBasicMaterial({color:0xc8641c,toneMapped:false}));glow.position.set(0,1.05,-.05);wall.add(glow);
+      const wood=S(0x5a3a22,{map:TEX.wood()});
+      [[-.6,1.05,.06,.12,2.2,.12],[.6,1.05,.06,.12,2.2,.12],[0,2.17,.06,1.35,.14,.14]].forEach(([x,y,z,w,h,d])=>{const b=new T.Mesh(new T.BoxGeometry(w,h,d),wood);b.position.set(x,y,z+.2);wall.add(b)});
+      const win=new T.Mesh(new T.PlaneGeometry(.5,.6),new T.MeshBasicMaterial({color:0xd9782a,toneMapped:false}));win.position.set(1.6,1.9,.231);wall.add(win);
+      // pergola beam with grapevine
+      const beam=new T.Mesh(new T.BoxGeometry(4.4,.14,.16),wood);beam.position.set(.4,3.15,.9);wall.add(beam);
+      const post=new T.Mesh(new T.CylinderGeometry(.07,.09,3.2,8),wood);post.position.set(-1.7,1.6,1.1);post.castShadow=true;wall.add(post);
+      const leafM=S(0x3f5d2a,{roughness:.8});
+      for(let i=0;i<46;i++){const l=new T.Mesh(new T.SphereGeometry(.16+Math.random()*.1,7,5),leafM);l.scale.set(1.2,.45,1);
+        l.position.set(-1.9+Math.random()*4.6,3.05+Math.random()*.35-(i%7===0?.5:0),.6+Math.random()*.7);l.rotation.set(Math.random(),Math.random()*3,Math.random());l.castShadow=true;wall.add(l)}
+      // low stone wall on the left
+      const lw=new T.Mesh(new T.BoxGeometry(2.6,.75,.6),S(0xffffff,{map:TEX.plaster(.9,true)}));lw.position.set(-2.8,.375,-1.1);lw.rotation.y=.2;lw.castShadow=lw.receiveShadow=true;sc.add(lw);
+      // clay jars
+      const jarGeo=new T.LatheGeometry([[0,0],[.16,.02],[.27,.22],[.31,.45],[.26,.68],[.13,.8],[.11,.9],[.15,.95]].map(([x,y])=>new T.Vector2(x,y)),28);
+      const clay=S(0xa4552c,{roughness:.75,map:TEX.clay()});
+      [[-1.9,0,-.4,1],[1.25,0,-1.25,.85],[3.5,0,-.5,1.15],[-3.2,.75,-1.05,.55],[-2.5,.75,-1.0,.45],[1.85,0,-.9,.6]].forEach(([x,y,z,s])=>{
+        const j=new T.Mesh(jarGeo,clay);j.position.set(x,y,z);j.scale.setScalar(s);j.rotation.y=Math.random()*6;j.castShadow=j.receiveShadow=true;sc.add(j)});
+      // woven basket and striped rug
+      const bask=new T.Mesh(new T.CylinderGeometry(.38,.3,.42,28,1,true),S(0xffffff,{map:TEX.weave(),side:T.DoubleSide}));bask.position.set(1.55,.21,.75);bask.castShadow=true;sc.add(bask);
+      const bread=new T.Mesh(new T.SphereGeometry(.17,12,8),S(0xc98a45));bread.scale.set(1.5,.6,1);bread.position.set(1.55,.36,.75);sc.add(bread);
+      const rug=new T.Mesh(new T.PlaneGeometry(2.6,1.3),S(0xffffff,{map:TEX.rug()}));rug.rotation.x=-Math.PI/2;rug.position.set(.2,.006,.15);rug.receiveShadow=true;sc.add(rug);
+      // stars
+      const sg=new T.BufferGeometry(),pts=[];for(let i=0;i<260;i++){const a=Math.random()*1.6-1.1,e=Math.random()*.8+.15,R=30;pts.push(Math.sin(a)*Math.cos(e)*R,Math.sin(e)*R,-Math.cos(a)*Math.cos(e)*R)}
       sg.setAttribute("position",new T.Float32BufferAttribute(pts,3));
-      this.stars=new T.Points(sg,new T.PointsMaterial({color:0xffffff,size:.18}));this.scene.add(this.stars);
-      const blob=new T.Mesh(new T.CircleGeometry(.65,24),new T.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.18}));blob.rotation.x=-Math.PI/2;blob.position.y=.01;this.scene.add(blob);
-      this.silMat=new T.MeshBasicMaterial({color:0x1b2440});
+      this.stars=new T.Points(sg,new T.PointsMaterial({color:0xfff3d6,size:.09,fog:false}));sc.add(this.stars);
+      this.silMat=new T.MeshBasicMaterial({color:0x0c0a08});
       this.ro=new ResizeObserver(()=>this.resize());
-      this.applyTheme();this.ok=true;
+      this.ok=true;
       const loop=()=>{requestAnimationFrame(loop);this.frame()};loop();
     }catch(e){this.ok=false}
   },
-  dark(){return getComputedStyle(document.documentElement).colorScheme.includes("dark")},
-  applyTheme(){
-    const d=this.dark();if(d===this.isDark)return;this.isDark=d;
-    this.scene.background=new THREE.Color(d?0x16223f:0xcfe0f2);
-    this.mat.ground.color.setHex(d?0x4a4636:0xd9c79a);this.mat.hillA.color.setHex(d?0x2f4434:0x9db07a);
-    this.mat.hillB.color.setHex(d?0x4a3f2c:0xc2a66b);this.mat.leaf.color.setHex(d?0x3c5232:0x6f8a4a);
-    this.orb.material.color.setHex(d?0xe8ecf5:0xfff1c4);this.stars.visible=d;
-    this.hemi.intensity=d?.55:.85;this.sun.intensity=d?.5:.75;this.silMat.color.setHex(d?0x05080f:0x1b2440);
-  },
+  applyTheme(){},
+  dark(){return false},
   mount(el){
     this.el=el;
     if(!this.ok){el.classList.add("flat");const n=document.createElement("p");n.className="note";n.style.padding="0 12px 12px";n.textContent="這台裝置的瀏覽器無法顯示 3D 圖，請改用 Chrome 或 Safari 最新版。";el.append(n);return}
@@ -451,56 +471,114 @@ const Stage={ok:false,el:null,cache:{},fig:null,sil:false,anim:null,t0:performan
   }
 };
 
+/* procedural painted textures (canvas) */
+const TEX={
+  cv(w,h,draw,rep){const c=document.createElement("canvas");c.width=w;c.height=h;draw(c.getContext("2d"),w,h);const t=new THREE.CanvasTexture(c);
+    t.encoding=THREE.sRGBEncoding;t.anisotropy=4;if(rep){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep,rep)}return t},
+  noise(g,w,h,a,n=2600){for(let i=0;i<n;i++){g.fillStyle=`rgba(${Math.random()<.5?"0,0,0":"255,240,210"},${Math.random()*a})`;g.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2,1+Math.random()*2)}},
+  gradient(stops){return this.cv(4,256,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);stops.forEach((s,i)=>gr.addColorStop(i/(stops.length-1),s));g.fillStyle=gr;g.fillRect(0,0,w,h)})},
+  flagstone(rep){return this.cv(512,512,(g,w,h)=>{g.fillStyle="#4a3a2a";g.fillRect(0,0,w,h);
+    for(let y=0;y<h;y+=64)for(let x=-(y/64%2)*48;x<w;x+=96){const tone=150+Math.random()*50;g.fillStyle=`rgb(${tone+20},${tone},${tone-35})`;
+      g.beginPath();g.moveTo(x+4+Math.random()*4,y+4);g.lineTo(x+92-Math.random()*4,y+3+Math.random()*3);g.lineTo(x+93,y+60-Math.random()*4);g.lineTo(x+3,y+61);g.closePath();g.fill()}
+    this.noise(g,w,h,.18,9000)},rep)},
+  plaster(rep,blocks){return this.cv(256,256,(g,w,h)=>{g.fillStyle="#c9a77a";g.fillRect(0,0,w,h);
+    for(let i=0;i<40;i++){g.fillStyle=`rgba(${120+Math.random()*80},${90+Math.random()*60},${50+Math.random()*40},.18)`;g.beginPath();g.arc(Math.random()*w,Math.random()*h,10+Math.random()*40,0,7);g.fill()}
+    if(blocks){g.strokeStyle="rgba(60,40,20,.55)";g.lineWidth=3;for(let y=0;y<h;y+=42){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();for(let x=(y/42%2)*40;x<w;x+=80){g.beginPath();g.moveTo(x,y);g.lineTo(x,y+42);g.stroke()}}}
+    this.noise(g,w,h,.2,5000)},rep)},
+  wood(){return this.cv(64,256,(g,w,h)=>{g.fillStyle="#6b4527";g.fillRect(0,0,w,h);for(let i=0;i<30;i++){g.strokeStyle=`rgba(30,15,5,${Math.random()*.4})`;g.beginPath();const x=Math.random()*w;g.moveTo(x,0);g.bezierCurveTo(x+6,h/3,x-6,h*2/3,x,h);g.stroke()}})},
+  clay(){return this.cv(128,128,(g,w,h)=>{g.fillStyle="#b0643a";g.fillRect(0,0,w,h);g.fillStyle="rgba(90,40,20,.35)";g.fillRect(0,40,w,6);g.fillRect(0,52,w,3);this.noise(g,w,h,.25,2500)})},
+  weave(){return this.cv(128,64,(g,w,h)=>{const cols=["#b88a4a","#8a5a2a","#c9a46a","#7a3a2a","#2f4f6a"];for(let y=0;y<h;y+=8){g.fillStyle=cols[(y/8)%cols.length];g.fillRect(0,y,w,8)}
+    for(let x=0;x<w;x+=6){g.fillStyle="rgba(0,0,0,.18)";g.fillRect(x,0,2,h)}this.noise(g,w,h,.2,800)})},
+  rug(){return this.cv(256,128,(g,w,h)=>{g.fillStyle="#7a2318";g.fillRect(0,0,w,h);const band=(y,hh,c)=>{g.fillStyle=c;g.fillRect(0,y,w,hh)};
+    band(10,8,"#d9a441");band(24,4,"#1f2f4a");band(h-18,8,"#d9a441");band(h-28,4,"#1f2f4a");
+    for(let x=10;x<w;x+=26){g.fillStyle="#d9a441";g.beginPath();g.moveTo(x,64);g.lineTo(x+9,52);g.lineTo(x+18,64);g.lineTo(x+9,76);g.fill()}this.noise(g,w,h,.25,3000)})},
+  fabric(base,stripes){
+    const key="f"+base+stripes.join();this.cache=this.cache||{};if(this.cache[key])return this.cache[key];
+    const hex=n=>"#"+n.toString(16).padStart(6,"0");
+    return this.cache[key]=this.cv(256,256,(g,w,h)=>{g.fillStyle=hex(base);g.fillRect(0,0,w,h);
+      stripes.forEach((c,i)=>{const x=20+i*70;g.fillStyle=hex(c);g.fillRect(x,0,10,h);g.fillStyle="rgba(255,235,200,.35)";g.fillRect(x+13,0,3,h);g.fillStyle=hex(c);g.fillRect(x+19,0,4,h)});
+      for(let y=0;y<h;y+=3){g.fillStyle=`rgba(0,0,0,${.04+Math.random()*.05})`;g.fillRect(0,y,w,1)}
+      for(let x=0;x<w;x+=3){g.fillStyle=`rgba(255,240,210,${Math.random()*.05})`;g.fillRect(x,0,1,h)}
+      for(let i=0;i<14;i++){g.strokeStyle="rgba(0,0,0,.12)";g.lineWidth=2+Math.random()*4;const x=Math.random()*w;g.beginPath();g.moveTo(x,0);g.lineTo(x+(Math.random()-.5)*30,h);g.stroke()}
+      this.noise(g,w,h,.15,3000)})}
+};
+
 function buildFigure(s){
   const T=THREE, g=new T.Group();
-  const L=c=>new T.MeshLambertMaterial({color:c,flatShading:true});
+  const M=(c,o={})=>new T.MeshStandardMaterial({color:c,roughness:.88,metalness:0,...o});
   const add=(par,geo,mat,x=0,y=0,z=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);par.add(m);return m};
-  const robe=L(s.robe), skin=L(0xc8976a), dark=L(0x1a1410), gold=L(0xd4a017), wood=L(0x7a5230), parch=L(0xeadfc0);
-  const back=(r1,r2,h)=>{const geo=new T.CylinderGeometry(r1,r2,h,12,1,true,Math.PI*.5,Math.PI);return geo};
-  add(g,new T.CylinderGeometry(.3,.56,1.45,10),robe,0,.725,0);
-  if(s.sash)add(g,new T.CylinderGeometry(.335,.36,.09,10),L(s.sash),0,1.02,0);
-  const torso=add(g,new T.SphereGeometry(.34,12,8),robe,0,1.42,0);torso.scale.set(1.05,.62,.85);g.userData.torso=torso;
+  const lighten=(c,f)=>{const col=new T.Color(c);col.lerp(new T.Color(0xf1e6cc),f);return col.getHex()};
+  const robeC=s.robe, accent=s.sash||0x2f3f5a;
+  const tunicM=M(0xffffff,{map:TEX.fabric(s.robe===0xf1ede2?0xf1ede2:lighten(robeC,.72),[lighten(robeC,.35)])});
+  const cloakM=M(0xffffff,{map:TEX.fabric(robeC,[accent,0xd9b46a,accent]),side:T.DoubleSide});
+  const skin=M(0xb97c55,{roughness:.7}), dark=M(0x1a1410), gold=M(0xd4a017,{metalness:.75,roughness:.35}), woodM=M(0x6b4527,{map:TEX.wood()}), parch=M(0xeadfc0);
+  // inner tunic
+  add(g,new T.LatheGeometry([[.001,0],[.43,0],[.4,.35],[.33,.85],[.29,1.25],[.22,1.45],[.001,1.5]].map(([x,y])=>new T.Vector2(x,y)),32),tunicM);
+  // outer mantle, open at the front
+  if(s.robe!==0xf1ede2||s.prop==="lamb"){
+    const cl=add(g,new T.CylinderGeometry(.36,.52,1.36,32,1,true,Math.PI*.2,Math.PI*1.6),cloakM,0,.76,0);
+    if(s.prop==="lamb")cl.scale.set(1,1,1);
+  }
+  const torso=add(g,new T.SphereGeometry(.31,24,16),cloakM,0,1.42,0);torso.scale.set(1.3,.6,.9);g.userData.torso=torso;
+  add(g,new T.TorusGeometry(.33,.045,8,28),M(accent),0,1.0,0).rotation.x=Math.PI/2;
+  add(g,new T.CylinderGeometry(.08,.09,.16,12),skin,0,1.58,0);
+  // sandals
+  [-.12,.12].forEach(x=>{add(g,new T.BoxGeometry(.12,.05,.26),M(0x4a2c18),x,.025,.32)});
+  // head
   const head=new T.Group();head.position.set(0,1.8,0);g.add(head);g.userData.head=head;
-  add(head,new T.SphereGeometry(.22,16,12),skin);
-  add(head,new T.SphereGeometry(.026,6,6),dark,-.075,.03,.205);add(head,new T.SphereGeometry(.026,6,6),dark,.075,.03,.205);
-  const hairCap=c=>add(head,new T.SphereGeometry(.232,16,10,0,Math.PI*2,0,Math.PI*.42),L(c),0,.012,-.012);
-  if(s.hair){hairCap(s.hair);const d=add(head,back(.2,.26,.62),L(s.hair),0,-.25,-.02);d.material.side=T.DoubleSide}
-  if(s.hairLong){hairCap(s.hairLong);const d=add(head,back(.22,.25,.45),L(s.hairLong),0,-.16,0);d.material.side=T.DoubleSide}
-  if(s.hairShort)hairCap(s.hairShort);
-  if(s.scarf){const sm=L(s.scarf);sm.side=T.DoubleSide;add(head,new T.SphereGeometry(.248,16,10,0,Math.PI*2,0,Math.PI*.46),sm,0,.015,-.012);
-    add(head,back(.25,.32,.6),sm,0,-.24,-.01);add(head,new T.TorusGeometry(.24,.025,6,20),L(0x5a3a1e),0,.07,0).rotation.x=Math.PI/2}
-  if(s.beard){const b=add(head,new T.ConeGeometry(.16,.34,8),L(s.beard),0,-.2,.11);b.rotation.x=Math.PI}
-  if(s.crown){const c=add(head,new T.CylinderGeometry(.2,.185,.1,12,1,true),gold,0,.21,0);c.material=L(0xd4a017);c.material.side=T.DoubleSide;
-    for(let i=0;i<6;i++){const a=i/6*Math.PI*2;add(head,new T.ConeGeometry(.03,.1,4),gold,Math.sin(a)*.2,.3,Math.cos(a)*.2)}}
+  add(head,new T.SphereGeometry(.19,32,24),skin).scale.set(.95,1.08,1);
+  add(head,new T.ConeGeometry(.035,.09,8),skin,0,-.01,.2).rotation.x=Math.PI/2;
+  [-.065,.065].forEach(x=>{add(head,new T.SphereGeometry(.022,10,8),dark,x,.035,.165);add(head,new T.BoxGeometry(.07,.014,.02),M(0x3a2a1a),x,.075,.17)});
+  const hairC=s.hairLong||s.hair||s.hairShort||s.beard;
+  if(hairC){const hm=M(hairC,{roughness:.95});
+    add(head,new T.SphereGeometry(.2,24,16,0,Math.PI*2,0,Math.PI*.5),hm,0,.02,-.01);
+    if(s.hairLong||s.hair){const d=add(head,new T.CylinderGeometry(.19,.24,s.hair?.62:.45,20,1,true,Math.PI*.5,Math.PI),hm,0,s.hair?-.27:-.18,-.01);d.material.side=T.DoubleSide}}
+  if(s.beard){const bm=M(s.beard,{roughness:.95});
+    const b1=add(head,new T.SphereGeometry(.15,20,16),bm,0,-.12,.07);b1.scale.set(1.05,1.1,.75);
+    const b2=add(head,new T.ConeGeometry(.12,.28,16),bm,0,-.3,.08);b2.rotation.x=Math.PI;
+    add(head,new T.TorusGeometry(.06,.018,6,16,Math.PI),bm,0,-.045,.165).rotation.z=Math.PI;}
+  if(s.scarf){const sm=M(0xffffff,{map:TEX.fabric(s.scarf,[accent,lighten(accent,.4)]),side:T.DoubleSide});
+    add(head,new T.SphereGeometry(.215,24,16,0,Math.PI*2,0,Math.PI*.47),sm,0,.025,-.01);
+    add(head,new T.CylinderGeometry(.21,.34,.72,24,1,true,Math.PI*.42,Math.PI*1.16),sm,0,-.3,-.02);
+    add(head,new T.TorusGeometry(.205,.022,8,28),M(accent),0,.07,0).rotation.x=Math.PI/2;}
+  if(s.crown){for(let i=0;i<8;i++){const a=i/8*Math.PI*2;add(head,new T.ConeGeometry(.028,.1,5),gold,Math.sin(a)*.19,.25,Math.cos(a)*.19)}
+    add(head,new T.TorusGeometry(.19,.025,8,28),gold,0,.19,0).rotation.x=Math.PI/2}
+  // arms with wide sleeves
   const pose={staff:"right",sword:"right",key:"right",tablets:"front",scroll:"front",harp:"front",wheat:"front"}[s.prop]||"rest";
   [-1,1].forEach(side=>{
-    const a=new T.Group();a.position.set(side*.36,1.5,0);g.add(a);
-    add(a,new T.CylinderGeometry(.08,.13,.6,8),robe,0,-.3,0);add(a,new T.SphereGeometry(.075,8,6),skin,0,-.63,0);
+    const a=new T.Group();a.position.set(side*.37,1.5,0);g.add(a);
+    add(a,new T.CylinderGeometry(.075,.13,.58,16,1,true),cloakM,0,-.29,0);
+    add(a,new T.SphereGeometry(.065,12,10),skin,0,-.62,0).scale.set(.9,1.1,.8);
     if(pose==="front"){a.rotation.x=-1.1;a.rotation.z=side*.12}
     else if(pose==="right"&&side===1){a.rotation.z=.5}
-    else a.rotation.z=side*.2;
+    else if(side===-1&&s.prop==="none"&&!s.hair){a.rotation.z=-2.3;a.rotation.x=-.3}
+    else a.rotation.z=side*.18;
   });
   const p=s.prop;
-  if(p==="staff"){add(g,new T.CylinderGeometry(.035,.04,2.2,6),wood,.66,1.1,.05);const h=add(g,new T.TorusGeometry(.13,.035,6,12,Math.PI),wood,.53,2.2,.05)}
-  if(p==="sword"){add(g,new T.BoxGeometry(.06,.9,.02),L(0xc9ced6),.66,1.4,.1);add(g,new T.BoxGeometry(.26,.05,.06),gold,.66,.95,.1);add(g,new T.CylinderGeometry(.03,.03,.2,6),wood,.66,.83,.1)}
-  if(p==="key"){add(g,new T.CylinderGeometry(.025,.025,.42,6),gold,.66,.95,.12);add(g,new T.TorusGeometry(.07,.022,6,14),gold,.66,1.22,.12);add(g,new T.BoxGeometry(.1,.04,.03),gold,.7,.77,.12)}
-  if(p==="tablets"){[-.15,.15].forEach(x=>{add(g,new T.BoxGeometry(.28,.38,.05),L(0x9a9488),x,1.22,.55);const top=add(g,new T.CylinderGeometry(.14,.14,.05,12,1,false,0,Math.PI),L(0x9a9488),x,1.41,.55);top.rotation.x=Math.PI/2;top.rotation.y=Math.PI/2})}
-  if(p==="scroll"){const sc=add(g,new T.CylinderGeometry(.09,.09,.62,12),parch,0,1.22,.52);sc.rotation.z=Math.PI/2;
-    [-.33,.33].forEach(x=>{const r=add(g,new T.CylinderGeometry(.03,.03,.24,6),wood,x,1.22,.52)})}
-  if(p==="harp"){const fr=add(g,new T.TorusGeometry(.28,.03,6,16,Math.PI*1.2),wood,-.05,1.25,.5);fr.rotation.z=-.3;
-    add(g,new T.CylinderGeometry(.03,.03,.5,6),wood,.13,1.13,.5);
-    for(let i=0;i<5;i++)add(g,new T.CylinderGeometry(.005,.005,.42-i*.05,3),gold,-.15+i*.06,1.2,.5)}
-  if(p==="wheat"){for(let i=0;i<7;i++){const x=(i-3)*.04;add(g,new T.CylinderGeometry(.008,.008,.6,3),L(0xb89a3a),x,1.2,.5).rotation.z=(i-3)*.06;const hd=add(g,new T.SphereGeometry(.035,6,5),L(0xd9b44a),x*1.6,1.53,.5);hd.scale.y=2.2}}
-  if(p==="lamb"){const lm=new T.Group();const wool=L(0xf4f2ec);const b=add(lm,new T.SphereGeometry(.24,10,8),wool,0,.36,0);b.scale.set(1.35,.9,.95);
-    add(lm,new T.SphereGeometry(.12,8,6),L(0x3a3030),.33,.48,0);[[-.15,-.1],[-.15,.1],[.15,-.1],[.15,.1]].forEach(([x,z])=>add(lm,new T.CylinderGeometry(.03,.03,.22,5),L(0x3a3030),x,.11,z));
+  if(p==="staff"){const st=add(g,new T.CylinderGeometry(.03,.042,2.25,10),woodM,.66,1.12,.05);st.rotation.z=-.04;add(g,new T.TorusGeometry(.12,.033,8,14,Math.PI*1.1),woodM,.54,2.24,.05)}
+  if(p==="sword"){add(g,new T.BoxGeometry(.06,.9,.015),M(0xc9ced6,{metalness:.8,roughness:.3}),.66,1.4,.1);add(g,new T.BoxGeometry(.26,.05,.06),gold,.66,.95,.1);add(g,new T.CylinderGeometry(.03,.03,.2,8),woodM,.66,.83,.1)}
+  if(p==="key"){add(g,new T.CylinderGeometry(.022,.022,.42,8),gold,.66,.95,.12);add(g,new T.TorusGeometry(.07,.02,8,16),gold,.66,1.22,.12);add(g,new T.BoxGeometry(.1,.04,.03),gold,.7,.77,.12)}
+  if(p==="tablets"){const stone=M(0x9a9488,{roughness:1,map:TEX.plaster(1)});[-.15,.15].forEach(x=>{add(g,new T.BoxGeometry(.28,.38,.05),stone,x,1.22,.55);const top=add(g,new T.CylinderGeometry(.14,.14,.05,16,1,false,0,Math.PI),stone,x,1.41,.55);top.rotation.x=Math.PI/2;top.rotation.y=Math.PI/2})}
+  if(p==="scroll"){const sc=add(g,new T.CylinderGeometry(.085,.085,.6,20),parch,0,1.22,.52);sc.rotation.z=Math.PI/2;
+    [-.32,.32].forEach(x=>{const r=add(g,new T.CylinderGeometry(.028,.028,.24,8),woodM,x,1.22,.52)})}
+  if(p==="harp"){const fr=add(g,new T.TorusGeometry(.28,.028,8,20,Math.PI*1.2),woodM,-.05,1.25,.5);fr.rotation.z=-.3;
+    add(g,new T.CylinderGeometry(.028,.028,.5,8),woodM,.13,1.13,.5);
+    for(let i=0;i<6;i++)add(g,new T.CylinderGeometry(.004,.004,.42-i*.045,3),gold,-.17+i*.055,1.2,.5)}
+  if(p==="wheat"){for(let i=0;i<9;i++){const x=(i-4)*.035;add(g,new T.CylinderGeometry(.007,.007,.6,3),M(0xb89a3a),x,1.2,.5).rotation.z=(i-4)*.05;const hd=add(g,new T.SphereGeometry(.032,8,6),M(0xd9b44a),x*1.6,1.53,.5);hd.scale.y=2.4}}
+  if(p==="lamb"){const lm=new T.Group();const wool=M(0xf1ece0,{roughness:1});
+    for(let i=0;i<9;i++){add(lm,new T.SphereGeometry(.13,10,8),wool,-.18+(i%3)*.17,.34+Math.floor(i/3)%2*.08,-.08+Math.floor(i/3)*.08)}
+    add(lm,new T.SphereGeometry(.1,12,10),M(0x2a2222),.32,.46,0).scale.set(1.3,1,.9);
+    [[-.15,-.1],[-.15,.1],[.15,-.1],[.15,.1]].forEach(([x,z])=>add(lm,new T.CylinderGeometry(.025,.025,.24,6),M(0x2a2222),x,.12,z));
     lm.position.set(.85,0,.45);lm.rotation.y=-.6;g.add(lm)}
-  if(p==="lion"){const ln=new T.Group();const fur=L(0xc98a3a);const b=add(ln,new T.SphereGeometry(.3,10,8),fur,0,.42,0);b.scale.set(1.5,.85,.9);
-    add(ln,new T.IcosahedronGeometry(.27,0),L(0x8a5220),.45,.62,0);add(ln,new T.SphereGeometry(.16,8,6),fur,.6,.6,0);
-    [[-.25,-.12],[-.25,.12],[.25,-.12],[.25,.12]].forEach(([x,z])=>add(ln,new T.CylinderGeometry(.06,.06,.3,6),fur,x,.15,z));
+  if(p==="lion"){const ln=new T.Group();const fur=M(0xc28a45);const b=add(ln,new T.SphereGeometry(.3,16,12),fur,0,.42,0);b.scale.set(1.55,.85,.9);
+    const mane=add(ln,new T.SphereGeometry(.27,14,12),M(0x7a4a1e,{roughness:1}),.45,.62,0);mane.scale.set(.8,1,1);add(ln,new T.SphereGeometry(.15,14,10),fur,.62,.6,0);
+    [[-.25,-.12],[-.25,.12],[.25,-.12],[.25,.12]].forEach(([x,z])=>add(ln,new T.CylinderGeometry(.06,.055,.3,8),fur,x,.15,z));
+    const tail=add(ln,new T.CylinderGeometry(.02,.02,.5,6),fur,-.6,.5,0);tail.rotation.z=1;
     ln.position.set(-1,0,.35);ln.rotation.y=.5;g.add(ln)}
-  if(p==="fish"){const fs=new T.Group();const sk=L(0x5f7f95);const b=add(fs,new T.SphereGeometry(.5,12,10),sk,0,0,0);b.scale.set(2,1,.9);
-    const tl=add(fs,new T.ConeGeometry(.35,.5,4),sk,-1.15,0,0);tl.rotation.z=Math.PI/2;add(fs,new T.SphereGeometry(.06,6,6),dark,.75,.15,.38);
+  if(p==="fish"){const fs=new T.Group();const sk=M(0x4f6f85,{roughness:.5,metalness:.2});const b=add(fs,new T.SphereGeometry(.5,24,16),sk,0,0,0);b.scale.set(2,1,.9);
+    const tl=add(fs,new T.ConeGeometry(.35,.5,4),sk,-1.15,0,0);tl.rotation.z=Math.PI/2;add(fs,new T.SphereGeometry(.06,8,8),dark,.75,.15,.38);
     fs.position.set(-1.4,.9,-1.1);fs.rotation.y=.3;g.add(fs)}
+  g.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true}});
   return g;
 }
 
