@@ -113,6 +113,10 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
 .stage.pic .pbg,.stage.pic .pimg{display:block}
 .stage .pbg{object-fit:cover;filter:blur(18px) brightness(.55);transform:scale(1.15)}
 .stage .pimg{object-fit:contain;transition:filter .7s ease}
+.stage .pcv{position:absolute;inset:0;width:100%;height:100%;display:none!important;touch-action:pan-y;transition:filter .7s ease}
+.stage.pic.gl .pcv{display:block!important}
+.stage.pic.gl .pimg{visibility:hidden}
+.stage.sil .pcv{filter:blur(16px) brightness(.18) saturate(0)}
 .stage.sil .pimg{filter:blur(16px) brightness(.18) saturate(0)}
 .stage.sil .pbg{filter:blur(24px) brightness(.25)}
 .stage.cheer .pimg{animation:cheer .9s ease}
@@ -387,7 +391,7 @@ const PEOPLE={
   paul:{name:"保羅",title:"外邦人的使徒",robe:0x7a5230,beard:0x3a2a1a,hairShort:0x3a2a1a,sash:0x2e2e2e,prop:"scroll",bio:"在大馬士革路上遇見復活的主，後來寫了許多書信。"},
   john:{name:"約翰",title:"蒙愛的門徒",robe:0x3a6a5a,hairShort:0x6a4020,sash:0xc0a050,prop:"scroll",bio:"晚年在拔摩海島上看見異象，寫下啟示錄。"}
 };
-for(const k in PEOPLE)PEOPLE[k].img=(window.IMG_DATA&&IMG_DATA[k])||("img/"+k+".jpg");
+for(const k in PEOPLE){PEOPLE[k].img=(window.IMG_DATA&&IMG_DATA[k])||("img/"+k+".jpg");PEOPLE[k].dimg=(window.IMG_DATA&&IMG_DATA[k+".d"])||("img/"+k+".d.jpg")}
 const PROPHET={title:"先知",robe:0x4f5a46,scarf:0xcfc4a0,beard:0x8a8a8a,sash:0x6b4a2a,prop:"scroll"};
 const APOSTLE={title:"使徒",robe:0x6a5a4a,beard:0x4a3a2a,hairShort:0x4a3a2a,sash:0x8a6a3a,prop:"none"};
 function charFor(b){
@@ -395,7 +399,7 @@ function charFor(b){
   if(b===0)return P.abraham; if(b<=4)return P.moses; if(b<=6)return P.joshua; if(b===7)return P.ruth;
   if(b===8||b===9||b===12||b===18)return P.david; if(b===10||b===13||(b>=19&&b<=21))return P.solomon;
   if(b===11)return w(PROPHET,{name:"以利沙",title:"行神蹟的先知"});
-  if(b===14)return P.ezra; if(b===15)return w(P.ezra,{name:"尼希米",title:"重建城牆的省長",robe:0x5a4a7a,img:""});
+  if(b===14)return P.ezra; if(b===15)return w(P.ezra,{name:"尼希米",title:"重建城牆的省長",robe:0x5a4a7a,img:"",dimg:""});
   if(b===16)return P.esther; if(b===17)return P.job; if(b===22)return P.isaiah;
   if(b===23||b===24)return w(PROPHET,{name:"耶利米",title:"流淚的先知",robe:0x5a5048});
   if(b===26)return P.daniel; if(b===31)return P.jonah;
@@ -474,6 +478,7 @@ const Stage={ok:false,el:null,cache:{},fig:null,sil:false,anim:null,t0:performan
     const bg=document.createElement("img"),im=document.createElement("img");bg.className="pbg";im.className="pimg";bg.alt="";bg.setAttribute("aria-hidden","true");im.decoding=bg.decoding="async";const hv=document.createElement("div");hv.className="heav";hv.setAttribute("aria-hidden","true");
     hv.innerHTML='<div class="halo"></div><div class="rays"></div>'+Array.from({length:18},()=>`<i style="left:${(Math.random()*94).toFixed(1)}%;top:${(Math.random()*80).toFixed(1)}%;--z:${(6+Math.random()*10).toFixed(0)}px;--d:${(2.2+Math.random()*2.6).toFixed(1)}s;--w:${(Math.random()*4).toFixed(1)}s"></i>`).join("");
     el.prepend(bg,im,hv);
+    if(Pic3D.ok){el.insertBefore(Pic3D.r.domElement,hv);Pic3D.bind(el)}
     if(!this.ok){el.classList.add("flat");const n=document.createElement("p");n.className="note";n.style.padding="0 12px 12px";n.textContent="這台裝置的瀏覽器無法顯示 3D 圖，請改用 Chrome 或 Safari 最新版。";el.append(n);return}
     el.prepend(this.r.domElement);this.ro.disconnect();this.ro.observe(el);this.resize();
   },
@@ -483,7 +488,7 @@ const Stage={ok:false,el:null,cache:{},fig:null,sil:false,anim:null,t0:performan
     if(cap)this.caption(sil?"這是誰？":spec.name,sil?"答完就揭曉":spec.title);
     this.spec=spec;
     if(this.el){const pic=!!spec.img;this.el.classList.toggle("pic",pic);this.el.classList.toggle("sil",pic&&sil);this.el.classList.remove("cheer","shake");
-      if(pic){this.el.classList.remove("flat");const n=this.el.querySelector(".note");if(n)n.remove();const im=this.el.querySelector(".pimg"),bg=this.el.querySelector(".pbg");im.src=bg.src=spec.img;im.alt=sil?"這是誰？答完就揭曉":spec.name+"畫像";this.resize();return}
+      if(pic){this.el.classList.remove("flat");const n=this.el.querySelector(".note");if(n)n.remove();const im=this.el.querySelector(".pimg"),bg=this.el.querySelector(".pbg");im.src=bg.src=spec.img;im.alt=sil?"這是誰？答完就揭曉":spec.name+"畫像";this.el.classList.remove("gl");Pic3D.set(spec,this.el);this.resize();return}
       else if(!this.ok&&!this.el.querySelector(".note")){this.el.classList.add("flat");const n=document.createElement("p");n.className="note";n.style.padding="0 12px 12px";n.textContent="這台裝置的瀏覽器無法顯示 3D 圖，請改用 Chrome 或 Safari 最新版。";this.el.append(n)}}
     if(!this.ok)return;
     const key=spec.name+spec.title;
@@ -493,7 +498,7 @@ const Stage={ok:false,el:null,cache:{},fig:null,sil:false,anim:null,t0:performan
   },
   setSil(on){this.sil=on;if(!this.fig)return;this.fig.traverse(m=>{if(m.isMesh){m.userData.mat=m.userData.mat||m.material;m.material=on?this.silMat:m.userData.mat}})},
   reveal(){if(this.spec){this.setSil(false);this.caption(this.spec.name,this.spec.title);if(this.el&&this.spec.img){this.el.classList.remove("sil");this.el.querySelector(".pimg").alt=this.spec.name+"畫像"}}},
-  play(type){this.anim={type,t:performance.now()};if(this.el&&this.spec&&this.spec.img){const c=this.el.classList;c.remove("cheer","shake");void this.el.offsetWidth;c.add(type==="cheer"?"cheer":"shake")}},
+  play(type){this.anim={type,t:performance.now()};Pic3D.anim={type,t:performance.now()};if(this.el&&this.spec&&this.spec.img){const c=this.el.classList;c.remove("cheer","shake");void this.el.offsetWidth;c.add(type==="cheer"?"cheer":"shake")}},
   frame(){
     if(!this.el||!this.el.isConnected||document.hidden||this.el.classList.contains("pic"))return;
     if(!this.fc||++this.fc%60===0)this.applyTheme();this.fc=this.fc||1;
@@ -511,6 +516,53 @@ const Stage={ok:false,el:null,cache:{},fig:null,sil:false,anim:null,t0:performan
     }
     this.r.render(this.scene,this.cam);
   }
+};
+
+/* painted portrait -> 3D: depth-displaced mesh with gentle life-like motion */
+const Pic3D={
+  init(){
+    try{const T=THREE;const r=this.r=new T.WebGLRenderer({antialias:true,alpha:true});if(!r.capabilities.maxVertexTextures)throw 0;
+      r.setPixelRatio(Math.min(devicePixelRatio,2));r.setClearColor(0,0);r.domElement.className="pcv";r.domElement.setAttribute("aria-hidden","true");
+      this.scene=new T.Scene();this.cam=new T.PerspectiveCamera(30,1,.05,20);
+      this.u={map:{value:null},dmap:{value:null},t:{value:0},k:{value:.32},amp:{value:1}};
+      this.mat=new T.ShaderMaterial({uniforms:this.u,transparent:true,
+        vertexShader:`uniform sampler2D dmap;uniform float t,k,amp;varying vec2 vUv;
+          void main(){vUv=uv;float d=texture2D(dmap,uv).r;vec3 p=position;
+            float low=smoothstep(.7,.0,uv.y),hi=smoothstep(.45,1.,uv.y);
+            p.x+=sin(t*1.3+uv.y*8.+uv.x*3.)*.007*d*low*amp;
+            p.y+=(sin(t*1.7)*.5+.5)*.008*d*(1.-uv.y)*amp;
+            p.x+=sin(t*.9)*.006*d*hi*amp;
+            p.z=d*k;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`,
+        fragmentShader:`uniform sampler2D map;varying vec2 vUv;
+          void main(){vec4 c=texture2D(map,vUv);float e=min(min(vUv.x,1.-vUv.x),min(vUv.y,1.-vUv.y));gl_FragColor=vec4(c.rgb,smoothstep(0.,.025,e));}`});
+      this.mesh=new T.Mesh(new T.PlaneGeometry(1,1,170,190),this.mat);this.scene.add(this.mesh);
+      this.tl=new T.TextureLoader();this.cache={};this.px=0;this.py=0;this.tx=0;this.ty=0;this.t0=performance.now();this.ok=true;
+      const loop=()=>{requestAnimationFrame(loop);this.frame()};loop();
+    }catch(e){this.ok=false}
+  },
+  bind(el){if(el._pic)return;el._pic=1;
+    el.addEventListener("pointermove",e=>{const b=el.getBoundingClientRect();this.tx=((e.clientX-b.left)/b.width-.5)*2;this.ty=((e.clientY-b.top)/b.height-.5)*2});
+    el.addEventListener("pointerleave",()=>{this.tx=this.ty=0})},
+  tex(url){if(!this.cache[url]){this.cache[url]=new Promise(ok=>this.tl.load(url,t=>{t.minFilter=THREE.LinearFilter;t.generateMipmaps=false;ok(t)},undefined,()=>ok(null)))}return this.cache[url]},
+  set(spec,el){if(!this.ok||!spec.dimg)return;const id=this.id=spec.img;this.el=el;
+    Promise.all([this.tex(spec.img),this.tex(spec.dimg)]).then(([m,d])=>{if(this.id!==id||!m||!d)return;
+      this.u.map.value=m;this.u.dmap.value=d;this.aspect=m.image.width/m.image.height;this.anim=null;
+      if(el.isConnected&&el.classList.contains("pic"))el.classList.add("gl")})},
+  frame(){const el=this.el;if(!el||!el.isConnected||document.hidden||!el.classList.contains("gl"))return;
+    const w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;
+    if(w!==this.w||h!==this.h){this.w=w;this.h=h;this.r.setSize(w,h,false);this.cam.aspect=w/h;this.cam.updateProjectionMatrix()}
+    const now=performance.now(),still=matchMedia("(prefers-reduced-motion: reduce)").matches,t=still?0:(now-this.t0)/1000;
+    this.u.t.value=t;this.u.amp.value=still?0:1;
+    const half=Math.tan(this.cam.fov*Math.PI/360),need=Math.max(1.0,this.aspect*1.0/this.cam.aspect),D=need/2/half+.26;
+    this.px+=(this.tx-this.px)*.06;this.py+=(this.ty-this.py)*.06;
+    const cx=Math.sin(t*.42)*.13+this.px*.18,cy=Math.sin(t*.31)*.05-this.py*.1;
+    let my=0,mx=0,s=1;
+    if(this.anim&&!still){const p=(now-this.anim.t)/900;if(p>=1)this.anim=null;
+      else if(this.anim.type==="cheer"){my=Math.sin(p*Math.PI)*.07;s=1+Math.sin(p*Math.PI)*.05}
+      else mx=Math.sin(p*Math.PI*6)*.05*(1-p)}
+    this.mesh.position.set(mx,my,0);this.mesh.scale.set(this.aspect*s,s,1);
+    this.cam.position.set(cx,cy,D);this.cam.lookAt(0,0,.12);
+    this.r.render(this.scene,this.cam)}
 };
 
 /* procedural painted textures (canvas) */
@@ -1093,7 +1145,7 @@ document.addEventListener("keydown",e=>{
   if(n>=1&&n<=4&&!S.answered){const b=app.querySelector(`.opt[data-k="${n-1}"]`);if(b){b.click();e.preventDefault()}}
 });
 
-Stage.init();
+Pic3D.init();Stage.init();
 renderSplash();
 ((window.claude&&window.claude.use)?initVisits:initCounterVisits)();
 </script>
