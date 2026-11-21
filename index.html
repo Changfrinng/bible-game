@@ -110,6 +110,19 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
 .stage.sil .pbg{filter:blur(24px) brightness(.25)}
 .stage.cheer .pimg{animation:cheer .9s ease}
 .stage.shake .pimg{animation:shake .6s ease}
+.stage .heav{position:absolute;inset:0;pointer-events:none;display:none;overflow:hidden}
+.stage.pic .heav{display:block}
+.stage.sil .heav{opacity:0}
+.heav .rays{position:absolute;left:50%;top:-30%;width:180%;aspect-ratio:1;transform:translateX(-50%);background:repeating-conic-gradient(from 0deg at 50% 50%,rgba(255,240,200,.22) 0deg 4deg,rgba(255,240,200,0) 4deg 14deg);-webkit-mask:radial-gradient(circle at 50% 50%,#000 0,transparent 60%);mask:radial-gradient(circle at 50% 50%,#000 0,transparent 60%);mix-blend-mode:screen;animation:rays 40s linear infinite}
+.heav .halo{position:absolute;left:50%;top:-18%;width:90%;aspect-ratio:1;transform:translateX(-50%);background:radial-gradient(circle,rgba(255,248,220,.55),rgba(255,226,150,.18) 40%,transparent 70%);mix-blend-mode:screen;animation:halo 5s ease-in-out infinite}
+.heav i{position:absolute;width:var(--z);height:var(--z);background:radial-gradient(circle,#fff 0,#fff6d8 25%,transparent 70%);opacity:0;animation:twk var(--d) ease-in-out var(--w) infinite}
+.heav i::before,.heav i::after{content:"";position:absolute;left:50%;top:50%;width:260%;height:2px;background:linear-gradient(90deg,transparent,#fffbe8,transparent);transform:translate(-50%,-50%)}
+.heav i::after{transform:translate(-50%,-50%) rotate(90deg)}
+.stage.cheer .heav .halo{animation:burst .9s ease-out}
+@keyframes rays{to{transform:translateX(-50%) rotate(360deg)}}
+@keyframes halo{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes burst{0%{opacity:1;filter:brightness(2.4)}100%{opacity:.8;filter:none}}
+@keyframes twk{0%,100%{opacity:0;transform:scale(.3) rotate(0)}50%{opacity:1;transform:scale(1) rotate(45deg)}}
 @keyframes cheer{0%,100%{transform:none}40%{transform:translateY(-14px) scale(1.04)}}
 @keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
 .stage.flat{height:auto;min-height:52px}
@@ -151,7 +164,7 @@ footer{color:var(--muted);font-size:12px;text-align:center}
 footer a{color:var(--muted)}
 .fade{animation:fade .25s ease-out}
 @keyframes fade{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.fade{animation:none}.stage .pimg{animation:none!important;transition:none}.mode,.opt{transition:none}}
+@media (prefers-reduced-motion:reduce){.fade{animation:none}.stage .pimg,.heav *{animation:none!important;transition:none}.mode,.opt{transition:none}}
 </style>
 
 <div class="wrap">
@@ -451,7 +464,9 @@ const Stage={ok:false,el:null,cache:{},fig:null,sil:false,anim:null,t0:performan
   dark(){return false},
   mount(el){
     this.el=el;
-    const bg=document.createElement("img"),im=document.createElement("img");bg.className="pbg";im.className="pimg";bg.alt="";bg.setAttribute("aria-hidden","true");im.decoding=bg.decoding="async";el.prepend(bg,im);
+    const bg=document.createElement("img"),im=document.createElement("img");bg.className="pbg";im.className="pimg";bg.alt="";bg.setAttribute("aria-hidden","true");im.decoding=bg.decoding="async";const hv=document.createElement("div");hv.className="heav";hv.setAttribute("aria-hidden","true");
+    hv.innerHTML='<div class="halo"></div><div class="rays"></div>'+Array.from({length:18},()=>`<i style="left:${(Math.random()*94).toFixed(1)}%;top:${(Math.random()*80).toFixed(1)}%;--z:${(6+Math.random()*10).toFixed(0)}px;--d:${(2.2+Math.random()*2.6).toFixed(1)}s;--w:${(Math.random()*4).toFixed(1)}s"></i>`).join("");
+    el.prepend(bg,im,hv);
     if(!this.ok){el.classList.add("flat");const n=document.createElement("p");n.className="note";n.style.padding="0 12px 12px";n.textContent="這台裝置的瀏覽器無法顯示 3D 圖，請改用 Chrome 或 Safari 最新版。";el.append(n);return}
     el.prepend(this.r.domElement);this.ro.disconnect();this.ro.observe(el);this.resize();
   },
