@@ -153,7 +153,9 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
 .people:not(.scope) button{display:inline-flex;align-items:center;gap:8px;padding:3px 14px 3px 3px}
 .people button img{width:34px;height:34px;border-radius:50%;object-fit:cover;object-position:center 20%}
 .pmq{overflow:hidden;margin:0 -4px;padding:4px;-webkit-mask:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
-.people.roll{flex-wrap:nowrap;width:max-content;animation:roll 45s linear infinite}
+.pmq{display:flex;flex-direction:column;gap:10px}
+.people.roll{flex-wrap:nowrap;width:max-content;animation:roll 32s linear infinite}
+.people.roll.rev{animation-direction:reverse;animation-duration:36s}
 .people.roll button{flex:none;margin-right:0}
 .pmq:hover .roll,.pmq:active .roll,.pmq:focus-within .roll{animation-play-state:paused}
 @keyframes roll{to{transform:translateX(calc(-50% - 4px))}}
@@ -967,7 +969,7 @@ function renderHome(){
     <div class="modes">${Object.entries(MODES).map(([k,m])=>`<button class="mode" data-mode="${k}"><h3>${m.name}<small>${best[k]!=null?"最佳 "+best[k]+" 分":m.tag}</small></h3><p>${m.desc}</p></button>`).join("")}</div>
     <p class="section-label" style="letter-spacing:.04em">答對得 10 分；連續答對每題再加分（最多 +10）。題目從上方選的經文範圍隨機出題。</p>
     <p class="section-label">人物圖鑑 · 點選人物打開 3D 介紹</p>
-    <div class="pmq"><div class="people roll">${[0,1].map(c=>Object.entries(PEOPLE).map(([k,p])=>`<button data-p="${k}" aria-pressed="false"${c?' aria-hidden="true" tabindex="-1"':""}>${p.img?`<img src="${p.img}" alt="">`:""}${p.name}</button>`).join("")).join("")}</div></div>
+    <div class="pmq">${[0,1].map(row=>`<div class="people roll${row?" rev":""}">${[0,1].map(c=>Object.entries(PEOPLE).slice(row*8,row*8+8).map(([k,p])=>`<button data-p="${k}" aria-pressed="false"${c?' aria-hidden="true" tabindex="-1"':""}>${p.img?`<img src="${p.img}" alt="">`:""}${p.name}</button>`).join("")).join("")}</div>`).join("")}</div>
     <p class="bio" id="bio"></p>
     <div class="actions"><button class="btn ghost" id="toMap">回到世界地圖</button></div>
   </div>`;
