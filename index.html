@@ -29,8 +29,18 @@
   --good:#62c48e; --good-soft:#163527; --bad:#f08075; --bad-soft:#3d1d1d; --chip:#1d2b49; color-scheme:dark}
 html,body{background:var(--bg);color:var(--ink)}
 body{font-family:var(--sans);font-size:16px;line-height:1.6;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
-.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{width:100%;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.duo,.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+@media (min-width:960px){
+  body{padding-left:max(32px,env(safe-area-inset-left,0px));padding-right:max(32px,env(safe-area-inset-right,0px))}
+  .duo{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;align-items:start}
+  .duo>.stage,.duo>.stage.pic{position:sticky;top:16px;height:min(72vh,720px)}
+  .modes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .options{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mapbox{padding:18px 18px 14px}
+}
+@media (min-width:1500px){.wrap{max-width:1600px}}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--gold);padding-bottom:12px}
@@ -987,7 +997,7 @@ function renderHome(){
   const d=new Date(), day=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);
   const v=VERSES[day%VERSES.length];
   app.innerHTML=`<div class="wrap fade">
-    <div class="stage" id="stage"><div class="cap"></div></div>
+    <div class="duo"><div class="stage" id="stage"><div class="cap"></div></div><div class="col">
     <article class="verse-card"><p class="eyebrow">${tr("today")}</p><p class="verse">${esc(v.text)}</p><p class="ref">${v.ref}</p></article>
     <p class="section-label">${tr("scope")}</p>
     <div class="people scope" id="scope"><button data-s="gold" aria-pressed="${SCOPE==="gold"}">${tr("gold",{n:VERSES.length})}</button><button data-s="nt" aria-pressed="${SCOPE==="nt"}">${tr("nt")}</button></div>
@@ -995,6 +1005,7 @@ function renderHome(){
     <p class="section-label">${tr("modes",{n:ROUND})}</p>
     <div class="modes">${Object.entries(MODES).map(([k,m])=>`<button class="mode" data-mode="${k}"><h3>${m.name}<small>${best[k]!=null?tr("best",{n:best[k]}):m.tag}</small></h3><p>${m.desc}</p></button>`).join("")}</div>
     <p class="section-label" style="letter-spacing:.04em">${tr("scoring")}</p>
+    </div></div>
     <p class="section-label">${tr("guide")}</p>
     <div class="pmq">${[0,1].map(row=>`<div class="people roll${row?" rev":""}">${[0,1].map(c=>Object.entries(PEOPLE).slice(row?Math.ceil(Object.keys(PEOPLE).length/2):0,row?99:Math.ceil(Object.keys(PEOPLE).length/2)).map(([k,p])=>`<button data-p="${k}" aria-pressed="false"${c?' aria-hidden="true" tabindex="-1"':""}>${p.img?`<img src="${p.img}" alt="">`:""}${p.name}</button>`).join("")).join("")}</div>`).join("")}</div>
     <p class="bio" id="bio"></p>
@@ -1028,12 +1039,12 @@ function renderPerson(k){
   const books=[...new Set(Array.from({length:66},(_,b)=>b).filter(b=>charFor(b)===p).map(b=>BOOKS[b]))];
   app.innerHTML=`<div class="wrap fade">
     <p class="section-label">${tr("guide_n",{i:i+1,n:keys.length})}</p>
-    <div class="stage" id="stage"><div class="cap"></div></div>
+    <div class="duo"><div class="stage" id="stage"><div class="cap"></div></div><div class="col">
     <article class="verse-card"><p class="eyebrow">${esc(p.title)}</p>
       <p class="verse" style="font-size:26px;font-weight:900">${esc(p.name)}</p>
       <p class="verse" style="font-size:18px;margin-top:6px">${esc(p.bio)}</p>
       ${books.length?`<p class="ref" style="text-align:left">${tr("appears",{books:books.map(esc).join(tr("sep")),p:esc(p.name)})}</p>`:""}</article>
-    ${related.length?`<p class="section-label">${tr("related")}</p><div class="learned">${related.map(v=>`<div>${esc(v.text)}<small>${v.ref}</small></div>`).join("")}</div>`:""}
+    ${related.length?`<p class="section-label">${tr("related")}</p><div class="learned">${related.map(v=>`<div>${esc(v.text)}<small>${v.ref}</small></div>`).join("")}</div>`:""}</div></div>
     <div class="actions"><button class="btn ghost" id="prevP">← ${PEOPLE[keys[(i+keys.length-1)%keys.length]].name}</button><button class="btn ghost" id="nextP">${PEOPLE[keys[(i+1)%keys.length]].name} →</button><button class="btn" id="backHome">${tr("home")}</button></div>
   </div>`;
   Stage.mount(document.getElementById("stage"));Stage.show(p);Stage.play("cheer");
@@ -1075,7 +1086,7 @@ function renderQ(){
       <div class="tray" id="bank">${q.chips.map((c,k)=>`<button class="chip" data-k="${k}">${esc(c.p)}</button>`).join("")}</div>
       <div class="actions"><button class="btn" id="check" disabled>${tr("check")}</button><button class="btn ghost" id="reset">${tr("reset")}</button></div>`;
   }
-  app.innerHTML=`<div class="wrap fade">${hud()}<div class="stage" id="stage"><div class="cap"></div></div>${body}<div id="fb"></div></div>`;
+  app.innerHTML=`<div class="wrap fade">${hud()}<div class="duo"><div class="stage" id="stage"><div class="cap"></div></div><div class="col">${body}<div id="fb"></div></div></div></div>`;
   Stage.mount(document.getElementById("stage"));
   if(q.type==="canon")Stage.show(PEOPLE.ezra);
   else Stage.show(charFor(q.v.b),{sil:q.type==="book"});
@@ -1156,12 +1167,12 @@ function renderEnd(){
   const items=S.log.map(l=>l.canon?`<div class="${l.ok?"hit":"miss"}">${l.canon.map(b=>BOOKS[b]).join(" → ")}<small>${l.ok?tr("canon_ok"):tr("canon_miss")}</small></div>`
     :`<div class="${l.ok?"hit":"miss"}">${esc(l.v.text)}<small>${l.v.ref}${l.ok?"":tr("review")}</small></div>`).join("");
   app.innerHTML=`<div class="wrap fade">
-    <div class="stage" id="stage"><div class="cap"></div></div>
+    <div class="duo"><div class="stage" id="stage"><div class="cap"></div></div><div class="col">
     <article class="verse-card"><p class="eyebrow">${tr("result",{m:MODES[S.mode].name})}</p>
       <p class="big-score">${S.score}</p>
       <p class="verse" style="font-size:22px;margin-top:6px">${title}${isBest&&prev!=null?tr("newrec"):""}</p>
       <div class="stats"><span>${tr("correct",{a:S.correct,n:ROUND})}</span><span>${tr("maxstreak",{n:S.maxStreak})}</span><span>${tr("bestpts",{n:Math.max(S.score,prev??0)})}</span></div></article>
-    <div class="actions"><button class="btn" id="again">${tr("again")}</button><button class="btn ghost" id="home2">${tr("change")}</button></div>
+    <div class="actions"><button class="btn" id="again">${tr("again")}</button><button class="btn ghost" id="home2">${tr("change")}</button></div></div></div>
     <p class="section-label">${tr("round_verses")}</p>
     <div class="learned">${items}</div></div>`;
   Stage.mount(document.getElementById("stage"));
