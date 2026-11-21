@@ -100,6 +100,18 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
 .learned small{display:block;color:var(--muted);font-family:var(--sans)}
 .stage{position:relative;height:clamp(220px,46vw,300px);border-radius:6px;overflow:hidden;background:var(--chip);border:1px solid var(--line)}
 .stage canvas{display:block;width:100%;height:100%}
+.stage.pic{height:clamp(300px,82vw,420px);background:#2a1f16}
+.stage.pic canvas{display:none}
+.stage .pbg,.stage .pimg{position:absolute;inset:0;width:100%;height:100%;display:none}
+.stage.pic .pbg,.stage.pic .pimg{display:block}
+.stage .pbg{object-fit:cover;filter:blur(18px) brightness(.55);transform:scale(1.15)}
+.stage .pimg{object-fit:contain;transition:filter .7s ease}
+.stage.sil .pimg{filter:blur(16px) brightness(.18) saturate(0)}
+.stage.sil .pbg{filter:blur(24px) brightness(.25)}
+.stage.cheer .pimg{animation:cheer .9s ease}
+.stage.shake .pimg{animation:shake .6s ease}
+@keyframes cheer{0%,100%{transform:none}40%{transform:translateY(-14px) scale(1.04)}}
+@keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
 .stage.flat{height:auto;min-height:52px}
 .stage .cap{position:absolute;left:12px;bottom:10px;right:12px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;pointer-events:none}
 .stage.flat .cap{position:static;padding:12px}
@@ -114,6 +126,8 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
 .ytbox iframe{display:block;width:100%;height:100%;border:0}
 .people{display:flex;flex-wrap:wrap;gap:8px}
 .people button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-family:var(--serif);font-size:16px}
+.people:not(.scope) button{display:inline-flex;align-items:center;gap:8px;padding:3px 14px 3px 3px}
+.people button img{width:34px;height:34px;border-radius:50%;object-fit:cover;object-position:center 20%}
 .people button[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
 .bio{margin:0;color:var(--muted);font-size:15px}
 .bio b{color:var(--ink);font-family:var(--serif)}
@@ -137,7 +151,7 @@ footer{color:var(--muted);font-size:12px;text-align:center}
 footer a{color:var(--muted)}
 .fade{animation:fade .25s ease-out}
 @keyframes fade{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.fade{animation:none}.mode,.opt{transition:none}}
+@media (prefers-reduced-motion:reduce){.fade{animation:none}.stage .pimg{animation:none!important;transition:none}.mode,.opt{transition:none}}
 </style>
 
 <div class="wrap">
@@ -353,6 +367,7 @@ const PEOPLE={
   paul:{name:"保羅",title:"外邦人的使徒",robe:0x7a5230,beard:0x3a2a1a,hairShort:0x3a2a1a,sash:0x2e2e2e,prop:"scroll",bio:"在大馬士革路上遇見復活的主，後來寫了許多書信。"},
   john:{name:"約翰",title:"蒙愛的門徒",robe:0x3a6a5a,hairShort:0x6a4020,sash:0xc0a050,prop:"scroll",bio:"晚年在拔摩海島上看見異象，寫下啟示錄。"}
 };
+for(const k in PEOPLE)PEOPLE[k].img=(window.IMG_DATA&&IMG_DATA[k])||("img/"+k+".jpg");
 const PROPHET={title:"先知",robe:0x4f5a46,scarf:0xcfc4a0,beard:0x8a8a8a,sash:0x6b4a2a,prop:"scroll"};
 const APOSTLE={title:"使徒",robe:0x6a5a4a,beard:0x4a3a2a,hairShort:0x4a3a2a,sash:0x8a6a3a,prop:"none"};
 function charFor(b){
@@ -360,7 +375,7 @@ function charFor(b){
   if(b===0)return P.abraham; if(b<=4)return P.moses; if(b<=6)return P.joshua; if(b===7)return P.ruth;
   if(b===8||b===9||b===12||b===18)return P.david; if(b===10||b===13||(b>=19&&b<=21))return P.solomon;
   if(b===11)return w(PROPHET,{name:"以利沙",title:"行神蹟的先知"});
-  if(b===14)return P.ezra; if(b===15)return w(P.ezra,{name:"尼希米",title:"重建城牆的省長",robe:0x5a4a7a});
+  if(b===14)return P.ezra; if(b===15)return w(P.ezra,{name:"尼希米",title:"重建城牆的省長",robe:0x5a4a7a,img:""});
   if(b===16)return P.esther; if(b===17)return P.job; if(b===22)return P.isaiah;
   if(b===23||b===24)return w(PROPHET,{name:"耶利米",title:"流淚的先知",robe:0x5a5048});
   if(b===26)return P.daniel; if(b===31)return P.jonah;
@@ -436,13 +451,18 @@ const Stage={ok:false,el:null,cache:{},fig:null,sil:false,anim:null,t0:performan
   dark(){return false},
   mount(el){
     this.el=el;
+    const bg=document.createElement("img"),im=document.createElement("img");bg.className="pbg";im.className="pimg";bg.alt="";bg.setAttribute("aria-hidden","true");im.decoding=bg.decoding="async";el.prepend(bg,im);
     if(!this.ok){el.classList.add("flat");const n=document.createElement("p");n.className="note";n.style.padding="0 12px 12px";n.textContent="這台裝置的瀏覽器無法顯示 3D 圖，請改用 Chrome 或 Safari 最新版。";el.append(n);return}
     el.prepend(this.r.domElement);this.ro.disconnect();this.ro.observe(el);this.resize();
   },
-  resize(){if(!this.el)return;const w=this.el.clientWidth,h=this.el.clientHeight;if(!w||!h)return;this.r.setSize(w,h,false);this.cam.aspect=w/h;this.cam.updateProjectionMatrix()},
+  resize(){if(!this.el||!this.ok)return;const w=this.el.clientWidth,h=this.el.clientHeight;if(!w||!h)return;this.r.setSize(w,h,false);this.cam.aspect=w/h;this.cam.updateProjectionMatrix()},
   caption(name,title){if(!this.el)return;this.el.querySelector(".cap").innerHTML=`<b>${esc(name)}</b>${title?`<span>${esc(title)}</span>`:""}`},
   show(spec,{sil=false,cap=true}={}){
     if(cap)this.caption(sil?"這是誰？":spec.name,sil?"答完就揭曉":spec.title);
+    this.spec=spec;
+    if(this.el){const pic=!!spec.img;this.el.classList.toggle("pic",pic);this.el.classList.toggle("sil",pic&&sil);this.el.classList.remove("cheer","shake");
+      if(pic){this.el.classList.remove("flat");const n=this.el.querySelector(".note");if(n)n.remove();const im=this.el.querySelector(".pimg"),bg=this.el.querySelector(".pbg");im.src=bg.src=spec.img;im.alt=sil?"這是誰？答完就揭曉":spec.name+"畫像";this.resize();return}
+      else if(!this.ok&&!this.el.querySelector(".note")){this.el.classList.add("flat");const n=document.createElement("p");n.className="note";n.style.padding="0 12px 12px";n.textContent="這台裝置的瀏覽器無法顯示 3D 圖，請改用 Chrome 或 Safari 最新版。";this.el.append(n)}}
     if(!this.ok)return;
     const key=spec.name+spec.title;
     if(!this.cache[key])this.cache[key]=buildFigure(spec);
@@ -450,10 +470,10 @@ const Stage={ok:false,el:null,cache:{},fig:null,sil:false,anim:null,t0:performan
     this.fig=this.cache[key];this.scene.add(this.fig);this.spec=spec;this.setSil(sil);this.anim=null;
   },
   setSil(on){this.sil=on;if(!this.fig)return;this.fig.traverse(m=>{if(m.isMesh){m.userData.mat=m.userData.mat||m.material;m.material=on?this.silMat:m.userData.mat}})},
-  reveal(){if(this.spec){this.setSil(false);this.caption(this.spec.name,this.spec.title)}},
-  play(type){this.anim={type,t:performance.now()}},
+  reveal(){if(this.spec){this.setSil(false);this.caption(this.spec.name,this.spec.title);if(this.el&&this.spec.img){this.el.classList.remove("sil");this.el.querySelector(".pimg").alt=this.spec.name+"畫像"}}},
+  play(type){this.anim={type,t:performance.now()};if(this.el&&this.spec&&this.spec.img){const c=this.el.classList;c.remove("cheer","shake");void this.el.offsetWidth;c.add(type==="cheer"?"cheer":"shake")}},
   frame(){
-    if(!this.el||!this.el.isConnected||document.hidden)return;
+    if(!this.el||!this.el.isConnected||document.hidden||this.el.classList.contains("pic"))return;
     if(!this.fc||++this.fc%60===0)this.applyTheme();this.fc=this.fc||1;
     const now=performance.now(),t=(now-this.t0)/1000,still=matchMedia("(prefers-reduced-motion: reduce)").matches;
     const f=this.fig;
@@ -868,7 +888,7 @@ function renderHome(){
     <div class="modes">${Object.entries(MODES).map(([k,m])=>`<button class="mode" data-mode="${k}"><h3>${m.name}<small>${best[k]!=null?"最佳 "+best[k]+" 分":m.tag}</small></h3><p>${m.desc}</p></button>`).join("")}</div>
     <p class="section-label" style="letter-spacing:.04em">答對得 10 分；連續答對每題再加分（最多 +10）。題目從上方選的經文範圍隨機出題。</p>
     <p class="section-label">人物圖鑑 · 點選人物打開 3D 介紹</p>
-    <div class="people">${Object.entries(PEOPLE).map(([k,p])=>`<button data-p="${k}" aria-pressed="false">${p.name}</button>`).join("")}</div>
+    <div class="people">${Object.entries(PEOPLE).map(([k,p])=>`<button data-p="${k}" aria-pressed="false">${p.img?`<img src="${p.img}" alt="" loading="lazy">`:""}${p.name}</button>`).join("")}</div>
     <p class="bio" id="bio"></p>
     <div class="actions"><button class="btn ghost" id="toMap">回到世界地圖</button></div>
   </div>`;
