@@ -152,6 +152,11 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
 .people button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-family:var(--serif);font-size:16px}
 .people:not(.scope) button{display:inline-flex;align-items:center;gap:8px;padding:3px 14px 3px 3px}
 .people button img{width:34px;height:34px;border-radius:50%;object-fit:cover;object-position:center 20%}
+.pmq{overflow:hidden;margin:0 -4px;padding:4px;-webkit-mask:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);mask:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+.people.roll{flex-wrap:nowrap;width:max-content;animation:roll 45s linear infinite}
+.people.roll button{flex:none;margin-right:0}
+.pmq:hover .roll,.pmq:active .roll,.pmq:focus-within .roll{animation-play-state:paused}
+@keyframes roll{to{transform:translateX(calc(-50% - 4px))}}
 .people button[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
 .bio{margin:0;color:var(--muted);font-size:15px}
 .bio b{color:var(--ink);font-family:var(--serif)}
@@ -175,7 +180,7 @@ footer{color:var(--muted);font-size:12px;text-align:center}
 footer a{color:var(--muted)}
 .fade{animation:fade .25s ease-out}
 @keyframes fade{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.fade{animation:none}.stage .pimg,.heav *,.mq-t,.mq-i em{animation:none!important;transition:none}.mode,.opt{transition:none}}
+@media (prefers-reduced-motion:reduce){.fade{animation:none}.people.roll{animation:none!important;flex-wrap:wrap;width:auto}.people.roll button[aria-hidden]{display:none}.stage .pimg,.heav *,.mq-t,.mq-i em{animation:none!important;transition:none}.mode,.opt{transition:none}}
 </style>
 
 <div class="wrap">
@@ -962,7 +967,7 @@ function renderHome(){
     <div class="modes">${Object.entries(MODES).map(([k,m])=>`<button class="mode" data-mode="${k}"><h3>${m.name}<small>${best[k]!=null?"最佳 "+best[k]+" 分":m.tag}</small></h3><p>${m.desc}</p></button>`).join("")}</div>
     <p class="section-label" style="letter-spacing:.04em">答對得 10 分；連續答對每題再加分（最多 +10）。題目從上方選的經文範圍隨機出題。</p>
     <p class="section-label">人物圖鑑 · 點選人物打開 3D 介紹</p>
-    <div class="people">${Object.entries(PEOPLE).map(([k,p])=>`<button data-p="${k}" aria-pressed="false">${p.img?`<img src="${p.img}" alt="" loading="lazy">`:""}${p.name}</button>`).join("")}</div>
+    <div class="pmq"><div class="people roll">${[0,1].map(c=>Object.entries(PEOPLE).map(([k,p])=>`<button data-p="${k}" aria-pressed="false"${c?' aria-hidden="true" tabindex="-1"':""}>${p.img?`<img src="${p.img}" alt="">`:""}${p.name}</button>`).join("")).join("")}</div></div>
     <p class="bio" id="bio"></p>
     <div class="actions"><button class="btn ghost" id="toMap">回到世界地圖</button></div>
   </div>`;
@@ -982,7 +987,7 @@ function renderHome(){
     bio.innerHTML=`<b>${p.name}</b>（${p.title}）：${p.bio}`;Stage.show(p);Stage.play("cheer")};
   app.querySelectorAll(".people:not(.scope) button").forEach(b=>b.onclick=()=>renderPerson(b.dataset.p));
   const tk=Object.keys(PEOPLE).find(k=>PEOPLE[k]===today);
-  if(tk){app.querySelector(`.people button[data-p="${tk}"]`).setAttribute("aria-pressed","true");bio.innerHTML=`<b>${today.name}</b>（${today.title}）：${today.bio}`}
+  if(tk){app.querySelectorAll(`.people button[data-p="${tk}"]`).forEach(b=>b.setAttribute("aria-pressed","true"));bio.innerHTML=`<b>${today.name}</b>（${today.title}）：${today.bio}`}
   else bio.textContent="今日金句出自"+BOOKS[v.b]+"。點上面的人物，認識聖經裡的人物。";
 }
 
