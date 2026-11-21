@@ -35,7 +35,14 @@ button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--gold);padding-bottom:12px}
 .brand h1{font-family:var(--serif);font-weight:900;font-size:clamp(30px,7vw,42px);letter-spacing:.12em;margin:0;line-height:1.1}
-.brand h1 span{color:var(--gold)}
+.brand{flex:1 1 240px;min-width:0}
+.brand h1 .mq-i>span{color:var(--gold)}
+.mq{overflow:hidden;white-space:nowrap;-webkit-mask:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.mq-t{display:inline-flex;animation:mq 16s linear infinite}
+.mq-i{padding-right:.6em}
+.mq-i em{font-style:normal;color:var(--gold);font-size:.5em;vertical-align:middle;margin-left:.6em;animation:twk2 2.4s ease-in-out infinite}
+@keyframes mq{to{transform:translateX(-50%)}}
+@keyframes twk2{50%{opacity:.25}}
 .brand p{margin:4px 0 0;color:var(--muted);font-size:13px;letter-spacing:.04em}
 .home-link{background:none;border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:14px;color:var(--muted)}
 .verse-card{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:6px;padding:22px 22px 18px;box-shadow:0 1px 0 var(--line)}
@@ -164,13 +171,13 @@ footer{color:var(--muted);font-size:12px;text-align:center}
 footer a{color:var(--muted)}
 .fade{animation:fade .25s ease-out}
 @keyframes fade{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.fade{animation:none}.stage .pimg,.heav *{animation:none!important;transition:none}.mode,.opt{transition:none}}
+@media (prefers-reduced-motion:reduce){.fade{animation:none}.stage .pimg,.heav *,.mq-t,.mq-i em{animation:none!important;transition:none}.mode,.opt{transition:none}}
 </style>
 
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <h1>經文<span>尋光</span></h1>
+      <h1 class="mq" aria-label="經文尋光"><span class="mq-t" aria-hidden="true"><span class="mq-i">經文<span>尋光</span><em>✦</em></span><span class="mq-i">經文<span>尋光</span><em>✦</em></span><span class="mq-i">經文<span>尋光</span><em>✦</em></span><span class="mq-i">經文<span>尋光</span><em>✦</em></span><span class="mq-i">經文<span>尋光</span><em>✦</em></span><span class="mq-i">經文<span>尋光</span><em>✦</em></span><span class="mq-i">經文<span>尋光</span><em>✦</em></span><span class="mq-i">經文<span>尋光</span><em>✦</em></span></span></h1>
       <p>和合本金句遊戲 · 你的話是我腳前的燈</p>
     </div>
     <button class="home-link" id="homeBtn" hidden>回首頁</button>
