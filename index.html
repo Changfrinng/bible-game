@@ -391,6 +391,7 @@ const PEOPLE={
   job:{name:"約伯",title:"忍耐的義人",robe:0x8a8272,scarf:0xbdb5a0,beard:0xcfcfcf,prop:"none",bio:"經歷極大的苦難仍不離棄神，最後蒙神加倍賜福。"},
   ezra:{name:"以斯拉",title:"精通律法的文士",robe:0x3e5a6e,scarf:0xe5dcc0,beard:0xbbbbbb,sash:0xb08a4a,prop:"scroll",bio:"帶領百姓歸回耶路撒冷，向眾人宣讀並教導律法。"},
   isaiah:{name:"以賽亞",title:"大先知",robe:0x4a5d4a,scarf:0xcfc4a0,beard:0x9a9a9a,sash:0x6b4a2a,prop:"scroll",bio:"預言彌賽亞的降生與受苦，留下許多安慰人的應許。"},
+  jeremiah:{name:"耶利米",title:"流淚的先知",robe:0x7a2e24,scarf:0xd8c8a0,beard:0x8a8a8a,sash:0x6b4a2a,prop:"scroll",bio:"在耶路撒冷被毀前後忠心傳講神的話，為百姓流淚，也宣告神要與他們另立新約。"},
   daniel:{name:"但以理",title:"獅子坑中的先知",robe:0x3d4f8a,scarf:0xd4b46a,beard:0x3a2a1a,sash:0xd4a017,prop:"lion",bio:"堅持每天三次向神禱告，被扔進獅子坑卻毫髮無傷。"},
   jonah:{name:"約拿",title:"被大魚吞下的先知",robe:0x4a6a7a,scarf:0xc8c0a0,beard:0x5a3a20,prop:"fish",bio:"逃避神的差遣，在魚腹中三日三夜後悔改，往尼尼微去傳道。"},
   jesus:{name:"耶穌",title:"好牧人",robe:0xf1ede2,sash:0xa8342a,hairLong:0x5a3a1e,beard:0x5a3a1e,prop:"lamb",bio:"道成肉身來到世間，是為羊捨命的好牧人。"},
@@ -408,7 +409,7 @@ function charFor(b){
   if(b===11)return w(PROPHET,{name:"以利沙",title:"行神蹟的先知"});
   if(b===14)return P.ezra; if(b===15)return w(P.ezra,{name:"尼希米",title:"重建城牆的省長",robe:0x5a4a7a,img:"",dimg:""});
   if(b===16)return P.esther; if(b===17)return P.job; if(b===22)return P.isaiah;
-  if(b===23||b===24)return w(PROPHET,{name:"耶利米",title:"流淚的先知",robe:0x5a5048});
+  if(b===23||b===24)return P.jeremiah;
   if(b===26)return P.daniel; if(b===31)return P.jonah;
   if(b<=38)return w(PROPHET,{name:BOOKS[b].replace(/書$/,"")});
   if(b<=42)return P.jesus; if(b===43||b===59||b===60)return P.peter;
@@ -969,7 +970,7 @@ function renderHome(){
     <div class="modes">${Object.entries(MODES).map(([k,m])=>`<button class="mode" data-mode="${k}"><h3>${m.name}<small>${best[k]!=null?"最佳 "+best[k]+" 分":m.tag}</small></h3><p>${m.desc}</p></button>`).join("")}</div>
     <p class="section-label" style="letter-spacing:.04em">答對得 10 分；連續答對每題再加分（最多 +10）。題目從上方選的經文範圍隨機出題。</p>
     <p class="section-label">人物圖鑑 · 點選人物打開 3D 介紹</p>
-    <div class="pmq">${[0,1].map(row=>`<div class="people roll${row?" rev":""}">${[0,1].map(c=>Object.entries(PEOPLE).slice(row*8,row*8+8).map(([k,p])=>`<button data-p="${k}" aria-pressed="false"${c?' aria-hidden="true" tabindex="-1"':""}>${p.img?`<img src="${p.img}" alt="">`:""}${p.name}</button>`).join("")).join("")}</div>`).join("")}</div>
+    <div class="pmq">${[0,1].map(row=>`<div class="people roll${row?" rev":""}">${[0,1].map(c=>Object.entries(PEOPLE).slice(row?Math.ceil(Object.keys(PEOPLE).length/2):0,row?99:Math.ceil(Object.keys(PEOPLE).length/2)).map(([k,p])=>`<button data-p="${k}" aria-pressed="false"${c?' aria-hidden="true" tabindex="-1"':""}>${p.img?`<img src="${p.img}" alt="">`:""}${p.name}</button>`).join("")).join("")}</div>`).join("")}</div>
     <p class="bio" id="bio"></p>
     <div class="actions"><button class="btn ghost" id="toMap">回到世界地圖</button></div>
   </div>`;
