@@ -110,6 +110,8 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
 .audio button[aria-pressed="true"]{background:var(--gold-soft);border-color:var(--gold);color:var(--gold);font-weight:700}
 .audio .tune{font-family:var(--serif);color:var(--ink)}
 .audio .yt{color:var(--lapis);font-size:14px;text-underline-offset:3px}
+.ytbox{width:100%;max-width:380px;aspect-ratio:16/9;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:#000}
+.ytbox iframe{display:block;width:100%;height:100%;border:0}
 .people{display:flex;flex-wrap:wrap;gap:8px}
 .people button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-family:var(--serif);font-size:16px}
 .people button[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
@@ -146,7 +148,8 @@ footer a{color:var(--muted)}
     </div>
     <button class="home-link" id="homeBtn" hidden>回首頁</button>
   </header>
-  <div class="audio"><span>大衛的琴</span><button id="musicBtn" aria-pressed="false">▶ 播放</button><span class="tune" id="tuneName"></span><button id="tuneBtn">下一首</button><a class="yt" href="https://www.youtube.com/results?search_query=%E5%A4%A7%E8%A1%9B%E7%9A%84%E7%90%B4" target="_blank" rel="noopener">在 YouTube 聽「大衛的琴」↗</a></div>
+  <div class="audio"><span>詩歌</span><button id="musicBtn" aria-pressed="false">▶ 播放</button><span class="tune" id="tuneName"></span><button id="tuneBtn">下一首</button><a class="yt" href="https://www.youtube.com/watch?v=OVJguY-A4LU&amp;list=RDOVJguY-A4LU&amp;start_radio=1" target="_blank" rel="noopener">在 YouTube 開啟這份詩歌 ↗</a></div>
+  <div class="ytbox" id="ytBox" hidden><div id="ytPlayer"></div></div>
   <main id="app"></main>
   <footer>經文取自 <a href="https://springbible.fhl.net/OfflineBible/index.html" target="_blank" rel="noopener">信望愛離線聖經</a>（和合本）· 背景音樂為網頁即時生成的原創豎琴配樂 · 數字鍵 1–4 可直接作答</footer>
 </div>
@@ -547,7 +550,7 @@ const Music={ctx:null,on:false,tune:0,bar:0,beat:0,next:0,timer:null,mel:9,
   },
   nextTune(){this.tune=(this.tune+1)%TUNES.length;this.bar=0;this.beat=0;if(this.on)this.next=this.ctx.currentTime+.4},
   sfx(ok){
-    if(!this.on||!this.ctx)return;const t=this.ctx.currentTime+.02;
+    if(!(this.on||this.sfxOn)||!this.ctx)return;const t=this.ctx.currentTime+.02;
     (ok?[72,76,79,84]:[64,60]).forEach((m,i)=>this.piano(this.hz(m),t+i*(ok?.08:.18),ok?.13:.1));
   }
 };
@@ -558,6 +561,45 @@ musicBtn.onclick=()=>{
   else if(Music.start()){musicBtn.setAttribute("aria-pressed","true");musicBtn.textContent="❚❚ 暫停"}
 };
 document.getElementById("tuneBtn").onclick=()=>{Music.nextTune();showTune()};
+
+/* Public site (outside claude.ai): play the chosen YouTube hymn playlist in an embedded player; harp music stays as fallback */
+const YT_ID="OVJguY-A4LU",YT_LIST="RDOVJguY-A4LU";
+if(!(window.claude&&window.claude.use)){
+  const ytBox=document.getElementById("ytBox"),tuneBtn=document.getElementById("tuneBtn");
+  let yt=null,ytPlaying=false,ytDead=false;
+  const setBtn=on=>{musicBtn.setAttribute("aria-pressed",on?"true":"false");musicBtn.textContent=on?"❚❚ 暫停":"▶ 播放"};
+  tuneName.textContent="〈YouTube 詩歌歌單〉";
+  const loadYT=()=>new Promise(res=>{
+    if(window.YT&&window.YT.Player)return res(true);
+    const prev=window.onYouTubeIframeAPIReady;window.onYouTubeIframeAPIReady=()=>{prev&&prev();res(true)};
+    const sc=document.createElement("script");sc.src="https://www.youtube.com/iframe_api";sc.onerror=()=>res(false);document.head.appendChild(sc);
+    setTimeout(()=>res(!!(window.YT&&window.YT.Player)),10000);
+  });
+  const fallback=()=>{
+    ytDead=true;ytBox.hidden=true;if(yt&&yt.destroy)try{yt.destroy()}catch(e){}
+    musicBtn.onclick=null;tuneBtn.onclick=()=>{Music.nextTune();showTune()};
+    musicBtn.onclick=()=>{if(Music.on){Music.stop();setBtn(false)}else if(Music.start()){setBtn(true)}};
+    showTune();tuneName.textContent+="（YouTube 無法播放，改用豎琴配樂）";
+    if(Music.start())setBtn(true);
+  };
+  musicBtn.onclick=async()=>{
+    if(Music.init()){Music.ctx.resume();Music.sfxOn=true}
+    if(yt&&ytPlaying){yt.pauseVideo();return}
+    ytBox.hidden=false;setBtn(true);
+    if(yt){yt.playVideo();return}
+    if(!(await loadYT()))return fallback();
+    yt=new YT.Player("ytPlayer",{videoId:YT_ID,
+      playerVars:{list:YT_LIST,listType:"playlist",autoplay:1,playsinline:1,rel:0,modestbranding:1},
+      events:{
+        onReady:e=>{try{e.target.setVolume(60);e.target.playVideo()}catch(err){}},
+        onStateChange:e=>{ytPlaying=e.data===1||e.data===3;setBtn(ytPlaying)},
+        onError:e=>{if(e.data===101||e.data===150||e.data===100){
+          if(!yt._triedSingle){yt._triedSingle=true;try{yt.loadVideoById(YT_ID);return}catch(err){}}
+          fallback()}}
+      }});
+  };
+  tuneBtn.onclick=()=>{if(yt&&!ytDead){try{yt.nextVideo()}catch(e){}}};
+}
 
 /* ---------- entry screen: world map of visits (shared db) ---------- */
 const WORLD_MASK="AAAAAwAnw////4AAIAAAAAAGAAAAAAAAAAADivwAf//wAAAAADAAf/wAHYAAAAAADoi3sAP//gAAAAAMAD///sAAAAgBgACfwz/AD/+gAAA4AEHf///+/8gBAP/7/nJdjwD/+AAAH/AA7f///////f4P//////h8H/gAAAf/6//f////////Mf/////9H4D8AeAA+ev///////////AP/////4A0B4AAAD5/////////////Af3////gHgA4AAAH5///////////LwAHgH///gHkAAAAAH4/////////+CIAABAB///4D+AAAAGCx/////////4A8AAIAAf///n/gAAAOCD/////////wA4AAAAAf///n/wAAAbP///////////AgAAAAAP/////wAAADf//////////9AAAAAAAF////0YAAAB///////////9AAAAAAAD////8EAAAB///////////5AAAAAAAD////2AAAAB/f5fP//////wAAAAAAAD////gAAAAfxnwPP//////jAAAAAAAD////AAAAAPCb3/n/////+CAAAAAAAD///8AAAAAfALf/n////+ECAAAAAAAB///8AAAAAGHQP/n/////mMAAAAAAAA///8AAAAAH+Ai///////E8AAAAAAAAf//wAAAAAP/AA///////BgAAAAAAAAP//gAAAAAf/73///////gAAAAAAAAAD/AQAAAAAf////f/////gAAAAAAAAAF+AQAAAAB///+/n/////AAAAAAAAAAC+AAAAAAB///+f0H////AAAAAAAAAAAeAwAAAAD////f/B///8gAAAAAAAAAAeGEAAAAH////v+B/z/AAAAAAAAAAAAPMAgAAAD////n+A/B+gAAAAAAAAAAAD8AAAAAD////n4AeB/AgAAAAAAAAAAAPAAAAAH////3gAcAfAgAAAAAAAAAAADAAAAAD////6AAcAfggAAAAAAAAAAABDwAAAD////8wAMATAIAAAAAAAAAAAAr/AAAB/////gAKASAAAAAAAAAAAAAAH/gAAA/////gACAAAIAAAAAAAAAAAAH/8AAAaH///AAAAsGAAAAAAAAAAAAAH/+AAAAB//+AAAAUOAAAAAAAAAAAAAP/+AAAAB//8AAAAYegAAAAAAAAAAAAP//gAAAD//4AAAAMeBgAAAAAAAAAAAP//8AAAB//wAAAAGdiuAAAAAAAAAAAf///AAAA//wAAAACAQHgAAAAAAAAAAP///gAAA//wAAAABwAHwgAAAAAAAAAH///AAAA//wAAAAACIDQIAAAAAAAAAH//+AAAAf/wAAAAAAAAAAAAAAAAAAAD//+AAAA//wgAAAAABxAAAAAAAAAAAD//+AAAA//wgAAAAAPxgBAAAAAAAAAA//8AAAA//jgAAAAAf5gAAAAAAAAAAAf/8AAAA//DgAAAAAf/gAAAAAAAAAAAf/8AAAAf/DAAAAAD//4CAAAAAAAAAAf/wAAAAf/DAAAAAH//4AAAAAAAAAAAf/AAAAAf+CAAAAAH//8AAAAAAAAAAAf/AAAAAP8AAAAAAH//+AAAAAAAAAAA/+AAAAAP8AAAAAAH//+AAAAAAAAAAA/+AAAAAH4AAAAAAD//+AAAAAAAAAAA/8AAAAAHwAAAAAADwf8AAAAAAAAAAA/gAAAAAAAAAAAAACAH4AIAAAAAAAAB/wAAAAAAAAAAAAAAAD4AEAAAAAAAAB+AAAAAAAAAAAAAAAAAAAGAAAAAAAAB6AAAAAAAAAAAAAAAAAwAMAAAAAAAAA8AAAAAAAAAAAAAAAAAQAYAAAAAAAAB4AAAAAAAAAAAAAAAAAAAwAAAAAAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAADwAAAAAAAAAACAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
