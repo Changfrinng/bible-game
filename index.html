@@ -599,45 +599,42 @@ async function initVisits(){
     },()=>done("error"));
   }catch(e){done(Visits.state==="loading"?"error":Visits.state)}
 }
-/* Public (no-login) build: shared counters on a free counter service, polled for near-live updates */
-const COUNTER_NS="changfrinng-bible-game";
-const COUNTER_BASE="https://abacus.jasoncameron.dev";
+/* Public (no-login) build: shared counters in Firestore (REST), polled for near-live updates */
+const FS_PROJECT="gen-lang-client-0505410667";
+const FS_DOC=`projects/${FS_PROJECT}/databases/(default)/documents/stats/counts`;
+const FS_URL="https://firestore.googleapis.com/v1/";
 const REGION_KEY={"台灣":"tw","港澳":"hkmo","中國大陸":"cn","日本":"jp","韓國":"kr","新加坡":"sg","馬來西亞":"my","菲律賓":"ph","泰國":"th","越南":"vn","印尼":"id","亞洲其他":"asia","美國":"us","加拿大":"ca","巴西":"br","美洲其他":"americas","英國":"uk","德國":"de","法國":"fr","歐洲其他":"europe","澳洲":"au","紐西蘭":"nz","大洋洲其他":"oceania","南非":"za","非洲其他":"africa"};
 const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 const ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
-async function counter(op,key){
-  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),8000);
-  try{const r=await fetch(`${COUNTER_BASE}/${op}/${COUNTER_NS}/${key}`,{signal:ac.signal});
-    if(r.status===404)return 0;if(!r.ok)throw new Error(r.status);const j=await r.json();return Number(j.value)||0}
+async function fsFetch(url,opt={}){
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),10000);
+  try{const r=await fetch(url,{...opt,signal:ac.signal});if(r.status===404)return null;if(!r.ok)throw new Error(r.status);return await r.json()}
   finally{clearTimeout(t)}
+}
+async function fsHit(fields){
+  return fsFetch(`${FS_URL}${FS_DOC.split("/documents/")[0]}/documents:commit`,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({writes:[{transform:{document:FS_DOC,fieldTransforms:fields.map(f=>({fieldPath:f,increment:{integerValue:"1"}}))}}]})});
+}
+async function fsRead(){
+  const d=await fsFetch(FS_URL+FS_DOC);const f=(d&&d.fields)||{},num=k=>Number((f[k]&&(f[k].integerValue||f[k].doubleValue))||0);
+  const regions={};Object.entries(REGION_KEY).forEach(([n,k])=>regions[n]=num("r_"+k));
+  return {total:num("total"),visitors:num("visitors"),regions};
 }
 async function initCounterVisits(){
   const saved=ls.get("jwxg-region");if(saved&&REGIONS[saved])Visits.region=saved;
   Visits.counterMode=true;
-  try{
-    if(!ss.get("jwxg-counted")){
-      ss.set("jwxg-counted","1");
-      const hits=[counter("hit","total"),counter("hit","r-"+REGION_KEY[Visits.region])];
-      if(!ls.get("jwxg-visitor")){ls.set("jwxg-visitor","1");hits.push(counter("hit","visitors"))}
-      await Promise.all(hits);
-    }
-  }catch(e){}
-  const pollTotals=async()=>{
-    try{const [total,visitors]=await Promise.all([counter("get","total"),counter("get","visitors")]);
-      Visits.counter=Object.assign(Visits.counter||{regions:{}},{total,visitors});Visits.state="live"}
+  if(!ss.get("jwxg-counted")){
+    const fields=["total","r_"+REGION_KEY[Visits.region]];
+    const newVisitor=!ls.get("jwxg-visitor");if(newVisitor)fields.push("visitors");
+    try{await fsHit(fields);ss.set("jwxg-counted","1");if(newVisitor)ls.set("jwxg-visitor","1")}catch(e){}
+  }
+  const poll=async()=>{
+    try{Visits.counter=await fsRead();Visits.state="live"}
     catch(e){if(!Visits.counter)Visits.state="error"}
     drawVisits();
   };
-  const pollRegions=async()=>{
-    const names=Object.keys(REGION_KEY);
-    const vals=await Promise.all(names.map(n=>counter("get","r-"+REGION_KEY[n]).catch(()=>null)));
-    Visits.counter=Visits.counter||{total:0,visitors:0,regions:{}};
-    names.forEach((n,i)=>{if(vals[i]!==null)Visits.counter.regions[n]=vals[i]});
-    drawVisits();
-  };
-  await pollTotals();await pollRegions();
-  setInterval(()=>{if(!document.hidden)pollTotals()},15000);
-  setInterval(()=>{if(!document.hidden)pollRegions()},60000);
+  await poll();
+  setInterval(()=>{if(!document.hidden)poll()},20000);
 }
 function tallies(){
   if(Visits.counter){
@@ -683,7 +680,7 @@ function drawVisits(){
   const live=Visits.state==="live";
   set("vTotal",live?t.total.toLocaleString():"—");set("vPeople",live?t.visitors.toLocaleString():"—");set("vRegions",live?t.regions:"—");
   set("vlive",{loading:"讀取各地瀏覽人次…",live:"即時更新",slow:"暫時連不上人次資料",error:"人次資料讀取失敗",off:"未登入，無法統計"}[Visits.state]);
-  set("vNote",{loading:"",live:Visits.counterMode?"每開啟一次遊戲計 1 人次，同一支手機或電腦只算 1 位訪客；數字每 15 秒自動更新。地區依裝置時區判斷，可以在上方修改。":"每位登入的訪客開啟一次就計 1 人次，可以在上方改成你所在的地區。",slow:"人次資料暫時連不上，地圖先顯示你的位置；連線恢復後會自動更新。",error:"統計服務暫時連不上，地圖先顯示你的位置，稍後會自動再試。",off:"要計入瀏覽人次，需要登入 claude.ai 開啟這個遊戲；目前地圖只顯示你的位置。"}[Visits.state]);
+  set("vNote",{loading:"",live:Visits.counterMode?"每開啟一次遊戲計 1 人次，同一支手機或電腦只算 1 位訪客；數字每 20 秒自動更新。地區依裝置時區判斷，可以在上方修改。":"每位登入的訪客開啟一次就計 1 人次，可以在上方改成你所在的地區。",slow:"人次資料暫時連不上，地圖先顯示你的位置；連線恢復後會自動更新。",error:"統計服務暫時連不上，地圖先顯示你的位置，稍後會自動再試。",off:"要計入瀏覽人次，需要登入 claude.ai 開啟這個遊戲；目前地圖只顯示你的位置。"}[Visits.state]);
   const top=Object.entries(t.by).sort((a,b)=>b[1].n-a[1].n).slice(0,8);
   const ul=document.getElementById("vTop");
   if(ul)ul.innerHTML=live?top.map(([r,x])=>`<li class="${r===Visits.region?"me":""}">${r} ${x.n.toLocaleString()} 人次</li>`).join(""):"";
