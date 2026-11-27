@@ -190,6 +190,7 @@ header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:1
 .toplist li{background:var(--chip);border-radius:999px;padding:2px 12px;font-size:14px;font-variant-numeric:tabular-nums}
 .toplist li.me{background:var(--lapis-soft);color:var(--lapis);font-weight:700}
 .where{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.where .wp{display:inline-flex;gap:8px;align-items:center;white-space:nowrap;margin-right:10px}
 .where select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
 .btn.big{font-size:18px;padding:12px 28px;align-self:flex-start;font-family:var(--serif);letter-spacing:.1em}
 .note{margin:0;font-size:13px;color:var(--muted)}
@@ -939,7 +940,7 @@ function tallies(){
 }
 let mapAnim=null;
 function renderSplash(){
-  S=null;homeBtn.hidden=true;
+  S=null;homeBtn.hidden=true;document.getElementById("langSel").hidden=false;
   app.innerHTML=`<div class="wrap fade">
     <section class="mapbox" aria-label="${tr("map_label")}">
       <div class="map-title"><h2>${tr("map_title")}</h2><span id="vlive">${tr("loading")}</span></div>
@@ -947,11 +948,12 @@ function renderSplash(){
     </section>
     <div class="vstats"><div class="vstat"><b id="vTotal">—</b><span>${tr("views")}</span></div><div class="vstat"><b id="vPeople">—</b><span>${tr("visitors")}</span></div><div class="vstat"><b id="vRegions">—</b><span>${tr("regions")}</span></div></div>
     <ul class="toplist" id="vTop"></ul>
-    <div class="where"><label for="regionSel">${tr("your_region")}</label><select id="regionSel">${Object.keys(REGIONS).map(r=>`<option value="${r}"${r===Visits.region?" selected":""}>${RN(r)}</option>`).join("")}</select></div>
+    <div class="where"><span class="wp"><label for="regionSel">${tr("your_region")}</label><select id="regionSel">${Object.keys(REGIONS).map(r=>`<option value="${r}"${r===Visits.region?" selected":""}>${RN(r)}</option>`).join("")}</select></span><span class="wp"><label for="langSel2">${tr("lang")}</label><select id="langSel2"></select></span></div>
     <p class="note" id="vNote"></p>
     <button class="btn big" id="enter">${tr("enter")}</button>
   </div>`;
   document.getElementById("enter").onclick=renderHome;
+  bindLang(document.getElementById("langSel2"));document.getElementById("langSel").hidden=true;
   document.getElementById("regionSel").onchange=async e=>{
     Visits.region=e.target.value;ls.set("jwxg-region",Visits.region);drawVisits();
     if(Visits.ref){try{await Visits.ref.update({region:Visits.region})}catch(err){}}
@@ -1008,7 +1010,7 @@ let S=null;
 homeBtn.onclick=()=>renderHome();
 
 function renderHome(){
-  S=null;homeBtn.hidden=true;
+  S=null;homeBtn.hidden=true;document.getElementById("langSel").hidden=false;
   const best=store.get();
   const d=new Date(), day=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);
   const v=VERSES[day%VERSES.length];
@@ -1049,7 +1051,7 @@ function renderHome(){
 
 function renderPerson(k){
   const keys=Object.keys(PEOPLE),i=keys.indexOf(k),p=PEOPLE[k];
-  S=null;homeBtn.hidden=false;
+  S=null;homeBtn.hidden=false;document.getElementById("langSel").hidden=false;
   const pool=(NT&&SCOPE==="nt")?VERSES.concat(NT):VERSES;
   const related=shuffle(pool.filter(v=>charFor(v.b)===p&&v.text.length<=70*TF)).slice(0,3);
   const books=[...new Set(Array.from({length:66},(_,b)=>b).filter(b=>charFor(b)===p).map(b=>BOOKS[b]))];
@@ -1211,11 +1213,13 @@ document.addEventListener("keydown",e=>{
   document.title=L.brand.join("");document.getElementById("subP").textContent=tr("sub");document.getElementById("footF").innerHTML=tr("footer");
   homeBtn.textContent=tr("home");document.getElementById("musicL").textContent=tr("music");document.getElementById("ytL").textContent=tr("yt_open");
   tuneBtn.textContent=tr("next_tune");if(musicBtn.getAttribute("aria-pressed")!=="true")musicBtn.textContent=tr("play");
-  const sel=document.getElementById("langSel");sel.setAttribute("aria-label",tr("lang"));
+  bindLang(document.getElementById("langSel"));
+})();
+function bindLang(sel){sel.setAttribute("aria-label",tr("lang"));
   sel.innerHTML=LANGS.map(l=>`<option value="${l}"${l===LANG?" selected":""}>${I18N[l].label}</option>`).join("");
   sel.onchange=()=>{let ok=false;try{localStorage.setItem("jwxg-lang",sel.value);ok=localStorage.getItem("jwxg-lang")===sel.value}catch(e){}
     const u=new URL(location.href);if(ok&&!u.searchParams.has("lang"))location.reload();else{u.searchParams.set("lang",sel.value);location.href=u.toString()}};
-})();
+}
 Pic3D.init();Stage.init();
 renderSplash();
 ((window.claude&&window.claude.use)?initVisits:initCounterVisits)();
